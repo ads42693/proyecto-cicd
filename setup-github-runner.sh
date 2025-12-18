@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script para configurar GitHub Actions Self-hosted Runner en WSL
+# Script para configurar GitHub Actions Self-hosted Runner
 # Uso: ./setup-github-runner.sh
 
 echo "======================================"
@@ -13,14 +13,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
-
-# Verificar si estamos en WSL
-if ! grep -q Microsoft /proc/version; then
-    echo -e "${RED}✗ Este script debe ejecutarse en WSL${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ WSL detectado${NC}"
 
 # Crear directorio para el runner
 RUNNER_DIR="$HOME/actions-runner"
