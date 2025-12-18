@@ -110,7 +110,6 @@ jobs:
   test:
     name: Run Tests
     runs-on: self-hosted
-    needs: security-scan
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -234,20 +233,11 @@ jobs:
         with:
           terraform_version: 1.13.4
       
-      # - name: Configure Terraform to skip signature verification
-      #   run: |
-      #     mkdir -p ~/.terraform.d
-      #     cat > ~/.terraform.d/terraform.rc << 'EOF'
-      #     provider_installation {
-      #       direct {}
-      #     }
-      #     EOF
-      
       - name: Set Terraform Workspace
         working-directory: ./terraform
         run: |
           echo "::group::Setting Terraform Workspace"
-          WORKSPACE_NAME="${{ github.sha }}"
+          WORKSPACE_NAME="${{ github.ref_name }}"
           if terraform workspace list | grep -q "$WORKSPACE_NAME"; then
             terraform workspace select "$WORKSPACE_NAME"
             echo "Selected existing workspace: $WORKSPACE_NAME"
@@ -316,8 +306,8 @@ jobs:
       - name: Upload Terraform State
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-state-${{ github.sha }}
-          path: terraform/.terraform/environments/${{ github.sha }}/terraform.tfstate  # Específico al workspace
+          name: terraform-state-${{ github.ref_name }}
+          path: terraform/.terraform/environments/${{ github.ref_name }}/terraform.tfstate  # Específico al workspace
           retention-days: 30
       
       - name: Deployment Summary
@@ -338,7 +328,7 @@ jobs:
         working-directory: ./terraform
         run: |
           echo "::group::Cleanup on Failure"
-          WORKSPACE_NAME="${{ github.sha }}"
+          WORKSPACE_NAME="${{ github.ref_name }}"
           if terraform workspace list | grep -q "$WORKSPACE_NAME"; then
             terraform workspace select "$WORKSPACE_NAME"
             terraform destroy -auto-approve || true  # Destruye infra
@@ -355,10 +345,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
+      - name: Terraform Init for Workspace
+        working-directory: ./terraform
+        env:
+          TF_CLI_CONFIG_FILE: ~/.terraform.d/terraform.rc
+        run: |
+          echo "::group::Terraform Init"
+          terraform init -upgrade
+          echo "::endgroup::"
+
       - name: Select Terraform Workspace
         working-directory: ./terraform
         run: |
-          terraform workspace select "${{ github.sha }}"
+          terraform workspace select "${{ github.ref_name }}"
 
       - name: Wait for Services
         run: |
@@ -422,10 +421,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
+      - name: Terraform Init for Workspace
+        working-directory: ./terraform
+        env:
+          TF_CLI_CONFIG_FILE: ~/.terraform.d/terraform.rc
+        run: |
+          echo "::group::Terraform Init"
+          terraform init -upgrade
+          echo "::endgroup::"
+
       - name: Select Terraform Workspace for Outputs
         working-directory: ./terraform
         run: |
-          terraform workspace select "${{ github.sha }}"
+          terraform workspace select "${{ github.ref_name }}"
 
       - name: Generate Pipeline Summary
         run: |
