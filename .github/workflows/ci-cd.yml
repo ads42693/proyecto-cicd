@@ -80,7 +80,7 @@ jobs:
         timeout-minutes: 3
 
       - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ github.sha }}
           path: sbom.json
@@ -131,7 +131,7 @@ jobs:
           echo "::endgroup::"
       
       - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report-${{ github.sha }}
           path: coverage/
@@ -200,7 +200,7 @@ jobs:
           echo "::endgroup::"
       
       - name: Upload Image Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docker-image-${{ github.sha }}
           path: mi-app-${{ github.sha }}.tar.gz
@@ -285,7 +285,7 @@ jobs:
           echo "::endgroup::"
       
       - name: Upload Terraform State
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-state-${{ github.sha }}
           path: terraform/terraform.tfstate
