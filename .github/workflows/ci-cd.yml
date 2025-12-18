@@ -37,6 +37,8 @@ jobs:
         timeout-minutes: 2
       
       - name: Run Snyk Security Scan
+        env:
+            SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           echo "::group::Snyk Security Scan"
           # Verificar que Snyk esté instalado
