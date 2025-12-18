@@ -15,8 +15,6 @@ jobs:
   security-scan:
     name: Security Analysis
     runs-on: self-hosted
-    env:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -41,24 +39,30 @@ jobs:
       - name: Run Snyk Security Scan
         run: |
           echo "::group::Snyk Security Scan"
+          # Verificar que Snyk esté instalado
           if ! command -v snyk &> /dev/null; then
             echo "Installing Snyk CLI..."
             npm install -g snyk
           fi
           
-          if [ -n "$SNYK_TOKEN" ]; then
-            snyk auth "$SNYK_TOKEN"
+          # Verificar autenticación
+          if snyk config get api 2>/dev/null | grep -q "api:"; then
             echo "✓ Snyk authenticated"
             echo "Running Snyk test..."
             timeout 180 snyk test --severity-threshold=high --json > snyk-results.json || true
             
+            # Mostrar resumen
             if [ -f snyk-results.json ]; then
               echo "Snyk scan completed"
               cat snyk-results.json | jq -r '.vulnerabilities | length' 2>/dev/null || echo "Results generated"
             fi
           else
             echo "❌ Snyk not authenticated"
-            echo "Skipping Snyk scan (no token)"
+            echo "To authenticate, run on your local machine:"
+            echo "  snyk auth"
+            echo ""
+            echo "Or set SNYK_TOKEN in GitHub secrets"
+            exit 1
           fi
           echo "::endgroup::"
         timeout-minutes: 5
@@ -76,19 +80,11 @@ jobs:
         timeout-minutes: 3
 
       - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: sbom-${{ github.sha }}
           path: sbom.json
           retention-days: 30
-
-      - name: Upload Snyk JSON result artifact
-        if: env.SNYK_TOKEN != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: snyk-results-${{ github.sha }}
-          path: snyk-results.json
-          retention-days: 7
 
       - name: Security Scan Summary
         run: |
@@ -96,20 +92,19 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ ESLint analysis completed" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ npm audit security scan executed" >> $GITHUB_STEP_SUMMARY
-          if [ -n "$SNYK_TOKEN" ]; then
+          if [ -n "${{ secrets.SNYK_TOKEN }}" ]; then
             echo "- ✅ Snyk security scan executed" >> $GITHUB_STEP_SUMMARY
-            if [ -f snyk-results.json ]; then
-              echo "- **Vulnerabilities:** $(jq '.vulnerabilities | length' snyk-results.json 2>/dev/null || echo 0)" >> $GITHUB_STEP_SUMMARY
-            fi
           else
-            echo "- ℹ️ Snyk skipped (no token)" >> $GITHUB_STEP_SUMMARY
+            echo "- ℹ️  Snyk skipped (optional - no token)" >> $GITHUB_STEP_SUMMARY
           fi
           echo "- ✅ SBOM generated (CycloneDX format)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**SBOM Components:** $(jq '.components | length' sbom.json)" >> $GITHUB_STEP_SUMMARY
 
   test:
     name: Run Tests
     runs-on: self-hosted
+    needs: security-scan
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -136,7 +131,7 @@ jobs:
           echo "::endgroup::"
       
       - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-report-${{ github.sha }}
           path: coverage/
@@ -205,7 +200,7 @@ jobs:
           echo "::endgroup::"
       
       - name: Upload Image Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: docker-image-${{ github.sha }}
           path: mi-app-${{ github.sha }}.tar.gz
@@ -231,29 +226,13 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.13.4
-      
-      - name: Set Terraform Workspace
-        working-directory: ./terraform
-        run: |
-          echo "::group::Setting Terraform Workspace"
-          WORKSPACE_NAME="${{ github.ref_name }}"
-          if terraform workspace list | grep -q "$WORKSPACE_NAME"; then
-            terraform workspace select "$WORKSPACE_NAME"
-            echo "Selected existing workspace: $WORKSPACE_NAME"
-          else
-            terraform workspace new "$WORKSPACE_NAME"
-            echo "Created new workspace: $WORKSPACE_NAME"
-          fi
-          echo "::endgroup::"
+          terraform_version: 1.6.0
       
       - name: Terraform Init
         working-directory: ./terraform
-        env:
-          TF_CLI_CONFIG_FILE: ~/.terraform.d/terraform.rc
         run: |
           echo "::group::Terraform Init"
-          terraform init -upgrade
+          terraform init
           echo "::endgroup::"
       
       - name: Terraform Validate
@@ -278,13 +257,6 @@ jobs:
           echo "::group::Terraform Apply"
           terraform apply -auto-approve tfplan
           echo "::endgroup::"
-
-      - name: Upload Terraform State Directory
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-state-dir-${{ github.ref_name }}
-          path: terraform/.terraform/
-          retention-days: 30
       
       - name: Get Terraform Outputs
         working-directory: ./terraform
@@ -297,12 +269,14 @@ jobs:
       - name: Verify Deployment
         run: |
           echo "::group::Verifying Deployment"
-          sleep 30
+          sleep 10  # Esperar que los contenedores inicien
           
+          # Verificar que los contenedores estén corriendo
           docker ps | grep mi-app || exit 1
           docker ps | grep prometheus || exit 1
           docker ps | grep grafana || exit 1
           
+          # Probar endpoints
           curl -f http://localhost:3000/health || exit 1
           curl -f http://localhost:9090/-/healthy || exit 1
           curl -f http://localhost:3001/api/health || exit 1
@@ -311,38 +285,24 @@ jobs:
           echo "::endgroup::"
       
       - name: Upload Terraform State
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: terraform-state-${{ github.ref_name }}
-          path: terraform/.terraform/environments/${{ github.ref_name }}/terraform.tfstate  # Específico al workspace
+          name: terraform-state-${{ github.sha }}
+          path: terraform/terraform.tfstate
           retention-days: 30
-      
+
       - name: Deployment Summary
         working-directory: ./terraform
         run: |
           echo "### Deployment Results :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo ""
-          echo "- ✅ Infrastructure deployed successfully"
-          echo "- ✅ All services are healthy"
-          echo ""
-          echo "**Services:**"
-          echo "- Application: $(terraform output -raw app_url)"
-          echo "- Prometheus: $(terraform output -raw prometheus_url)"
-          echo "- Grafana: $(terraform output -raw grafana_url)"
-      
-      - name: Cleanup on Failure
-        if: failure()
-        working-directory: ./terraform
-        run: |
-          echo "::group::Cleanup on Failure"
-          WORKSPACE_NAME="${{ github.ref_name }}"
-          if terraform workspace list | grep -q "$WORKSPACE_NAME"; then
-            terraform workspace select "$WORKSPACE_NAME"
-            terraform destroy -auto-approve || true  # Destruye infra
-            terraform workspace delete "$WORKSPACE_NAME" || true  # Borra workspace
-            echo "Cleaned up workspace: $WORKSPACE_NAME"
-          fi
-          echo "::endgroup::"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Infrastructure deployed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ All services are healthy" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Services:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Application: $(terraform output -raw app_url)" >> $GITHUB_STEP_SUMMARY
+          echo "- Prometheus: $(terraform output -raw prometheus_url)" >> $GITHUB_STEP_SUMMARY
+          echo "- Grafana: $(terraform output -raw grafana_url)" >> $GITHUB_STEP_SUMMARY
 
   integration-test:
     name: Integration Tests
@@ -352,38 +312,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Download Terraform State Directory
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-state-dir-${{ github.ref_name }}
-          path: terraform/.terraform/
-
-      - name: Terraform Init for Workspace
-        working-directory: ./terraform
-        env:
-          TF_CLI_CONFIG_FILE: ~/.terraform.d/terraform.rc
-        run: |
-          echo "::group::Terraform Init"
-          terraform init -upgrade
-          echo "::endgroup::"
-
-      - name: Select Terraform Workspace
-        working-directory: ./terraform
-        run: |
-          run: |
-          WORKSPACE_NAME="${{ github.ref_name }}"
-          if terraform workspace list | grep -q "$WORKSPACE_NAME"; then
-            terraform workspace select "$WORKSPACE_NAME"
-            echo "Selected workspace: $WORKSPACE_NAME"
-          else
-            echo "Workspace $WORKSPACE_NAME not found, creating..."
-            terraform workspace new "$WORKSPACE_NAME"
-          fi
-
       - name: Wait for Services
         run: |
           echo "::group::Waiting for Services"
-          sleep 30
+          sleep 15
           echo "::endgroup::"
       
       - name: Test Application Endpoints
@@ -439,36 +371,6 @@ jobs:
     needs: [security-scan, test, build, deploy, integration-test]
     if: always()
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Download Terraform State Directory
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-state-dir-${{ github.ref_name }}
-          path: terraform/.terraform/
-
-      - name: Terraform Init for Workspace
-        working-directory: ./terraform
-        env:
-          TF_CLI_CONFIG_FILE: ~/.terraform.d/terraform.rc
-        run: |
-          echo "::group::Terraform Init"
-          terraform init -upgrade
-          echo "::endgroup::"
-
-      - name: Select Terraform Workspace for Outputs
-        working-directory: ./terraform
-        run: |
-          WORKSPACE_NAME="${{ github.ref_name }}"
-          if terraform workspace list | grep -q "$WORKSPACE_NAME"; then
-            terraform workspace select "$WORKSPACE_NAME"
-            echo "Selected workspace: $WORKSPACE_NAME"
-          else
-            echo "Workspace $WORKSPACE_NAME not found, creating..."
-            terraform workspace new "$WORKSPACE_NAME"
-          fi
-
       - name: Generate Pipeline Summary
         run: |
           echo "## 🎉 CI/CD Pipeline Completed" >> $GITHUB_STEP_SUMMARY

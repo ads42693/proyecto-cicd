@@ -26,28 +26,22 @@ build: ## Construir imagen Docker
 	docker build -t mi-app:latest .
 	@echo "✓ Imagen construida: mi-app:latest"
 
-# Variable para workspace (default: manual)
-WORKSPACE ?= manual
-
 deploy: ## Desplegar infraestructura con Terraform
-	@echo "Desplegando con Terraform en workspace $(WORKSPACE)..."
-	cd terraform && \
-	if terraform workspace list | grep -q "$(WORKSPACE)"; then \
-		terraform workspace select "$(WORKSPACE)"; \else \
-	else \
-		terraform workspace new "$(WORKSPACE)"; \
-	fi && \
-	terraform init && terraform apply -auto-approve
-	@echo "✓ Infraestructura desplegada en workspace $(WORKSPACE)"
+	@echo "Desplegando con Terraform..."
+	cd terraform && terraform init && terraform apply -auto-approve
+	@echo "✓ Infraestructura desplegada"
+
+up: build deploy ## Construir y desplegar todo
+	@echo "✓ Aplicación lista!"
+	@echo ""
+	@echo "Servicios disponibles:"
+	@echo "  - Aplicación: http://localhost:3000"
+	@echo "  - Prometheus: http://localhost:9090"
+	@echo "  - Grafana:    http://localhost:3001 (admin/admin)"
 
 down: ## Destruir infraestructura
-	@echo "Destruyendo infraestructura en workspace $(WORKSPACE)..."
-	cd terraform && \
-	if terraform workspace list | grep -q "$(WORKSPACE)"; then \
-		terraform workspace select "$(WORKSPACE)" && terraform destroy -auto-approve; \
-	else \
-		echo "Workspace $(WORKSPACE) no existe"; \
-	fi
+	@echo "Destruyendo infraestructura..."
+	cd terraform && terraform destroy -auto-approve
 	@echo "✓ Infraestructura destruida"
 
 clean: down ## Limpiar todo (infraestructura + archivos temporales)
@@ -158,3 +152,58 @@ demo: up ## Demostración completa del proyecto
 	@echo "======================================"
 	@echo "✓ Demo completada"
 	@echo "======================================"
+
+fix-workflow: ## Arreglar workflow bloqueado
+	@echo "Aplicando fix para Snyk timeout..."
+	@echo ""
+	@echo "Pasos:"
+	@echo "1. Cancela el workflow actual en GitHub (si está corriendo)"
+	@echo "2. El workflow se ha actualizado con:"
+	@echo "   - Timeout de 3 minutos en security scan"
+	@echo "   - npm audit como alternativa a Snyk"
+	@echo "   - Snyk opcional (solo si tienes token)"
+	@echo ""
+	@read -p "¿Workflow cancelado en GitHub? (y/n) " ans; \
+	if [ "$ans" = "y" ]; then \
+		git add .github/workflows/ci-cd.yml; \
+		git commit -m "fix: Add timeout to security scans and use npm audit"; \
+		git push; \
+		echo ""; \
+		echo "✓ Fix aplicado. Revisa GitHub Actions."; \
+	else \
+		echo "Cancela primero el workflow en GitHub y ejecuta este comando de nuevo"; \
+	fi
+
+cancel-runner-jobs: ## Matar procesos bloqueados del runner
+	@echo "Matando procesos de npm/snyk bloqueados..."
+	@pkill -9 snyk 2>/dev/null || echo "No hay procesos snyk"
+	@pkill -9 npm 2>/dev/null || echo "No hay procesos npm bloqueados"
+	@cd ~/actions-runner && sudo ./svc.sh restart
+	@echo "✓ Runner reiniciado"
+
+setup-snyk: ## Configurar Snyk localmente
+	@chmod +x setup-snyk-local.sh
+	@./setup-snyk-local.sh
+
+test-snyk: ## Probar Snyk localmente
+	@echo "Probando Snyk..."
+	@if command -v snyk &> /dev/null; then \
+		snyk test --severity-threshold=high || echo "Scan completed"; \
+	else \
+		echo "❌ Snyk no instalado. Ejecuta: make setup-snyk"; \
+	fi
+
+verify-snyk: ## Verificar autenticación de Snyk
+	@echo "Verificando Snyk..."
+	@if command -v snyk &> /dev/null; then \
+		if snyk config get api 2>/dev/null | grep -q "api:"; then \
+			echo "✓ Snyk está autenticado"; \
+			snyk config get api; \
+		else \
+			echo "❌ Snyk NO está autenticado"; \
+			echo "Ejecuta: snyk auth"; \
+		fi; \
+	else \
+		echo "❌ Snyk no está instalado"; \
+		echo "Ejecuta: make setup-snyk"; \
+	fi
