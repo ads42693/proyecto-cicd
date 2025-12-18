@@ -9,9 +9,9 @@ terraform {
   }
 }
 
-provider "docker" {
-  host = "unix:///var/run/docker.sock"
-}
+# provider "docker" {
+#   host = "unix:///var/run/docker.sock"
+# }
 
 # Red Docker para los contenedores
 resource "docker_network" "app_network" {
