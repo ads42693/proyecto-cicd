@@ -232,7 +232,7 @@ jobs:
         - name: Set up Terraform
           uses: hashicorp/setup-terraform@v2
           with:
-            terraform_version: 1.6.0
+            terraform_version: 1.13.4
         
         - name: Configure Terraform to skip signature verification
           run: |
