@@ -125,7 +125,6 @@ const gracefulShutdown = () => {
     process.exit(0);
   });
   
-  // Forzar cierre después de 10 segundos
   setTimeout(() => {
     console.error('Forzando cierre del servidor');
     process.exit(1);
@@ -135,4 +134,5 @@ const gracefulShutdown = () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-module.exports = app;
+// Exportar ambos: app y server
+module.exports = { app, server };

@@ -1,5 +1,10 @@
 const request = require('supertest');
-const app = require('./server');
+const { app, server } = require('./server');
+
+afterAll(() => {
+  // Cerrar el servidor al terminar los tests
+  server.close();
+});
 
 describe('API Endpoints', () => {
   describe('GET /', () => {
