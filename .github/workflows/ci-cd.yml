@@ -39,6 +39,7 @@ jobs:
       - name: Run Snyk Security Scan
         run: |
           echo "::group::Snyk Security Scan"
+          # Verificar que Snyk esté instalado
           if ! command -v snyk &> /dev/null; then
             echo "Installing Snyk CLI..."
             npm install -g snyk
@@ -50,13 +51,17 @@ jobs:
             echo "Running Snyk test..."
             timeout 180 snyk test --severity-threshold=high --json > snyk-results.json || true
             
+            # Mostrar resumen
             if [ -f snyk-results.json ]; then
               echo "Snyk scan completed"
               cat snyk-results.json | jq -r '.vulnerabilities | length' 2>/dev/null || echo "Results generated"
             fi
           else
             echo "❌ Snyk not authenticated"
-            echo "To authenticate, run: snyk auth"
+            echo "To authenticate, run on your local machine:"
+            echo "  snyk auth"
+            echo ""
+            echo "Or set SNYK_TOKEN in GitHub secrets"
             exit 1
           fi
           echo "::endgroup::"
