@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .card-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .card-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status.healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .service-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .service-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .service-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .service-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .service-url {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9em;
+            display: block;
+            margin-top: 10px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .service-url:hover {
+            background: #e0e0e0;
+        }
+
+        .metrics-chart {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 100%;
+            padding: 20px 0;
+        }
+
+        .bar {
+            flex: 1;
+            margin: 0 5px;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 5px 5px 0 0;
+            position: relative;
+            transition: all 0.3s ease;
+            animation: growBar 1s ease-out;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+        }
+
+        .bar-label {
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .bar-value {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.9;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes growBar {
+            from { transform: scaleY(0); }
+            to { transform: scaleY(1); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 CI/CD Monitoring Dashboard</h1>
+            <p>Monitoreo en Tiempo Real - Proyecto DevOps</p>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">Requests Totales</div>
+                </div>
+                <div class="card-value" id="totalRequests">
+                    <span class="loading"></span>
+                </div>
+                <div class="card-label">Desde el inicio</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">⚡</div>
+                    <div class="card-title">Requests/min</div>
+                </div>
+                <div class="card-value" id="requestsPerMin">
+                    <span class="loading"></span>
+                </div>
+                <div class="card-label">Tráfico actual</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">⏱️</div>
+                    <div class="card-title">Tiempo Respuesta</div>
+                </div>
+                <div class="card-value" id="avgResponseTime">
+                    <span class="loading"></span>
+                </div>
+                <div class="card-label">Promedio (ms)</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">💚</div>
+                    <div class="card-title">Estado</div>
+                </div>
+                <div class="card-value" style="font-size: 1.5em;">
+                    <span class="status healthy" id="healthStatus">Healthy</span>
+                </div>
+                <div class="card-label" id="uptime">Uptime: <span class="loading"></span></div>
+            </div>
+        </div>
+
+        <div class="metrics-chart">
+            <div class="chart-title">📈 Requests por Endpoint (últimos datos)</div>
+            <div class="chart-container">
+                <div class="bar-chart" id="endpointChart">
+                    <div class="loading"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="services">
+            <div class="service-card">
+                <div class="service-icon">🌐</div>
+                <div class="service-name">API Application</div>
+                <span class="status healthy">Running</span>
+                <a href="http://localhost:3000/api/data" class="service-url" target="_blank">
+                    Ver API →
+                </a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">📊</div>
+                <div class="service-name">Prometheus</div>
+                <span class="status healthy">Monitoring</span>
+                <a href="http://localhost:9090" class="service-url" target="_blank">
+                    Abrir Prometheus →
+                </a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">📉</div>
+                <div class="service-name">Grafana</div>
+                <span class="status healthy">Visualizing</span>
+                <a href="http://localhost:3001" class="service-url" target="_blank">
+                    Abrir Grafana →
+                </a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🔍</div>
+                <div class="service-name">Metrics</div>
+                <span class="status healthy">Collecting</span>
+                <a href="http://localhost:3000/metrics" class="service-url" target="_blank">
+                    Ver Métricas →
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🎓 Proyecto CI/CD - Terraform + Docker + GitHub Actions</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                Stack: Node.js + Express + Prometheus + Grafana
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Actualizar métricas cada 5 segundos
+        async function updateMetrics() {
+            try {
+                // Obtener métricas desde el endpoint
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+
+                // Actualizar valores
+                document.getElementById('totalRequests').textContent = data.totalRequests.toLocaleString();
+                document.getElementById('requestsPerMin').textContent = data.requestsPerMin.toFixed(1);
+                document.getElementById('avgResponseTime').textContent = data.avgResponseTime.toFixed(0) + ' ms';
+                
+                // Actualizar uptime
+                const uptimeHours = (data.uptime / 3600).toFixed(1);
+                document.getElementById('uptime').innerHTML = `Uptime: ${uptimeHours}h`;
+
+                // Actualizar gráfico de barras
+                updateChart(data.endpointStats);
+            } catch (error) {
+                console.error('Error fetching metrics:', error);
+            }
+        }
+
+        function updateChart(endpointStats) {
+            const chartContainer = document.getElementById('endpointChart');
+            
+            if (!endpointStats || endpointStats.length === 0) {
+                chartContainer.innerHTML = '<p style="text-align: center; color: #999;">Generando datos...</p>';
+                return;
+            }
+
+            // Encontrar el valor máximo para escalar las barras
+            const maxValue = Math.max(...endpointStats.map(e => e.count));
+
+            chartContainer.innerHTML = endpointStats.map(endpoint => {
+                const height = (endpoint.count / maxValue) * 100;
+                return `
+                    <div class="bar" style="height: ${height}%;">
+                        <div class="bar-value">${endpoint.count}</div>
+                        <div class="bar-label">${endpoint.name}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Generar tráfico de prueba para demostración
+        async function generateTestTraffic() {
+            const endpoints = ['/api/data', '/health', '/'];
+            const randomEndpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+            
+            try {
+                await fetch(randomEndpoint);
+            } catch (error) {
+                // Ignorar errores de tráfico de prueba
+            }
+        }
+
+        // Actualizar métricas inmediatamente y cada 5 segundos
+        updateMetrics();
+        setInterval(updateMetrics, 5000);
+
+        // Generar tráfico de prueba cada 3 segundos
+        setInterval(generateTestTraffic, 3000);
+    </script>
+</body>
+</html>

@@ -228,6 +228,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
+      - name: Download Previous Terraform State
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-state-${{ github.sha }}
+          path: terraform/
+        continue-on-error: true
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -357,6 +364,15 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Cleanup After Deploy
+        if: failure() || cancelled()
+        run: |
+          docker stop mi-app prometheus grafana 2>/dev/null || true
+          docker rm mi-app prometheus grafana 2>/dev/null || true
+          docker network rm app-network 2>/dev/null || true
+          docker volume rm prometheus-data grafana-data 2>/dev/null || true
+          docker system prune -f || true
 
   pipeline-summary:
     name: Pipeline Summary
@@ -380,3 +396,34 @@ jobs:
           echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+
+  package-deliverables:
+    name: Package Deliverables
+    runs-on: self-hosted
+    needs: [pipeline-summary]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Collect Deliverables
+        run: |
+          mkdir deliverables
+          cp .github/workflows/ci_cd.yml deliverables/
+          cp terraform/*.tf deliverables/
+          cp Dockerfile deliverables/
+          cp mi-app-${{ github.sha }}.tar.gz deliverables/ || true
+          cp sbom.json deliverables/ || true
+          # opcional: incluir coverage o resultados de seguridad
+          ls -lh deliverables
+
+      - name: Create Archive
+        run: |
+          tar -czf deliverables-${{ github.sha }}.tar.gz deliverables
+          ls -lh deliverables-${{ github.sha }}.tar.gz
+
+      - name: Upload Deliverables Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deliverables-${{ github.sha }}
+          path: deliverables-${{ github.sha }}.tar.gz
+          retention-days: 30
