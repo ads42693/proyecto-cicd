@@ -273,18 +273,16 @@ jobs:
           echo "::endgroup::"
       
       - name: Get Terraform Outputs
-        id: outputs
         working-directory: ./terraform
         run: |
           echo "::group::Infrastructure URLs"
           terraform output -json > outputs.json
           cat outputs.json
+          echo ""
+          echo "Application URL: $(terraform output -raw app_url)"
+          echo "Prometheus URL: $(terraform output -raw prometheus_url)"
+          echo "Grafana URL: $(terraform output -raw grafana_url)"
           echo "::endgroup::"
-          
-          # Exportar outputs como variables de entorno
-          echo "app_url=$(terraform output -raw app_url)" >> $GITHUB_OUTPUT
-          echo "prometheus_url=$(terraform output -raw prometheus_url)" >> $GITHUB_OUTPUT
-          echo "grafana_url=$(terraform output -raw grafana_url)" >> $GITHUB_OUTPUT
       
       - name: Verify Deployment
         run: |
