@@ -34,18 +34,33 @@ jobs:
           npm run lint || true
           echo "::endgroup::"
         continue-on-error: true
+        timeout-minutes: 2
       
       - name: Run Snyk Security Scan
         run: |
           echo "::group::Snyk Security Scan"
-          # Instalar Snyk si no está disponible
           if ! command -v snyk &> /dev/null; then
+            echo "Installing Snyk CLI..."
             npm install -g snyk
           fi
-          # Ejecutar análisis (continuará aunque falle por falta de token)
-          snyk test --severity-threshold=high || echo "Snyk scan completed (may need authentication)"
+          
+          # Verificar autenticación
+          if snyk config get api 2>/dev/null | grep -q "api:"; then
+            echo "✓ Snyk authenticated"
+            echo "Running Snyk test..."
+            timeout 180 snyk test --severity-threshold=high --json > snyk-results.json || true
+            
+            if [ -f snyk-results.json ]; then
+              echo "Snyk scan completed"
+              cat snyk-results.json | jq -r '.vulnerabilities | length' 2>/dev/null || echo "Results generated"
+            fi
+          else
+            echo "❌ Snyk not authenticated"
+            echo "To authenticate, run: snyk auth"
+            exit 1
+          fi
           echo "::endgroup::"
-        continue-on-error: true
+        timeout-minutes: 5
       
       - name: Generate SBOM with CycloneDX
         run: |
@@ -57,6 +72,7 @@ jobs:
           echo "SBOM generated successfully"
           ls -lh sbom.json
           echo "::endgroup::"
+        timeout-minutes: 3
 
       - name: Upload SBOM Artifact
         uses: actions/upload-artifact@v4
@@ -70,7 +86,12 @@ jobs:
           echo "### Security Scan Results :shield:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ ESLint analysis completed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Snyk security scan executed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ npm audit security scan executed" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ secrets.SNYK_TOKEN }}" ]; then
+            echo "- ✅ Snyk security scan executed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ℹ️  Snyk skipped (optional - no token)" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- ✅ SBOM generated (CycloneDX format)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**SBOM Components:** $(jq '.components | length' sbom.json)" >> $GITHUB_STEP_SUMMARY
