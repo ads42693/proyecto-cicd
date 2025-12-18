@@ -12,117 +12,117 @@ env:
   DOCKER_TAG: ${{ github.sha }}
 
 jobs:
-security-scan:
-  name: Security Analysis
-  runs-on: self-hosted
-  env:
-    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+  security-scan:
+    name: Security Analysis
+    runs-on: self-hosted
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run ESLint
-      run: |
-        echo "::group::ESLint Analysis"
-        npm run lint || true
-        echo "::endgroup::"
-      continue-on-error: true
-      timeout-minutes: 2
+      - name: Run ESLint
+        run: |
+          echo "::group::ESLint Analysis"
+          npm run lint || true
+          echo "::endgroup::"
+        continue-on-error: true
+        timeout-minutes: 2
 
-    - name: Run Snyk Security Scan (produce JSON + SARIF)
-      if: ${{ env.SNYK_TOKEN != '' }}
-      continue-on-error: true
-      timeout-minutes: 5
-      run: |
-        echo "::group::Snyk Security Scan"
-        echo "SNYK_TOKEN available: ${SNYK_TOKEN:+yes}"
-        timeout 180 npx --yes snyk@latest test \
-          --severity-threshold=high \
-          --json --sarif-file-output=snyk.sarif > snyk-results.json || true
+      - name: Run Snyk Security Scan (produce JSON + SARIF)
+        if: ${{ env.SNYK_TOKEN != '' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          echo "::group::Snyk Security Scan"
+          echo "SNYK_TOKEN available: ${SNYK_TOKEN:+yes}"
+          timeout 180 npx --yes snyk@latest test \
+            --severity-threshold=high \
+            --json --sarif-file-output=snyk.sarif > snyk-results.json || true
 
-        if [ -f snyk-results.json ]; then
-          count=$(jq '.vulnerabilities | length' snyk-results.json 2>/dev/null || echo "0")
-          echo "Vulnerabilities found (count): $count"
-        else
-          echo "No snyk-results.json generated"
-        fi
-
-        if [ -f snyk.sarif ]; then
-          echo "SARIF generated: snyk.sarif"
-          ls -lh snyk.sarif
-        else
-          echo "Warning: snyk.sarif not generated"
-        fi
-        echo "::endgroup::"
-
-    - name: Snyk skipped (no token)
-      if: ${{ env.SNYK_TOKEN == '' }}
-      run: |
-        echo "::group::Snyk Security Scan (skipped)"
-        echo "SNYK_TOKEN not found in repository/organization secrets. Skipping Snyk scan."
-        echo "::endgroup::"
-
-    - name: Upload SARIF to GitHub Code Scanning
-      if: ${{ env.SNYK_TOKEN != '' && always() }}
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: snyk.sarif
-
-    - name: Upload Snyk JSON result artifact
-      if: ${{ env.SNYK_TOKEN != '' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: snyk-results-${{ github.sha }}
-        path: snyk-results.json
-        retention-days: 7
-
-    - name: Generate SBOM with CycloneDX
-      run: |
-        echo "::group::Generating SBOM"
-        if ! command -v cyclonedx-npm &> /dev/null; then
-          npm install -g @cyclonedx/cyclonedx-npm
-        fi
-        cyclonedx-npm --output-file sbom.json
-        echo "SBOM generated successfully"
-        ls -lh sbom.json
-        echo "::endgroup::"
-      timeout-minutes: 3
-
-    - name: Upload SBOM Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: sbom-${{ github.sha }}
-        path: sbom.json
-        retention-days: 30
-
-    - name: Security Scan Summary
-      run: |
-        echo "### Security Scan Results :shield:" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ ESLint analysis completed" >> $GITHUB_STEP_SUMMARY
-        if [ -n "$SNYK_TOKEN" ]; then
-          echo "- ✅ Snyk scan executed (results attached)" >> $GITHUB_STEP_SUMMARY
           if [ -f snyk-results.json ]; then
-            echo "- **Vulnerabilities:** $(jq '.vulnerabilities | length' snyk-results.json 2>/dev/null || echo 0)" >> $GITHUB_STEP_SUMMARY
+            count=$(jq '.vulnerabilities | length' snyk-results.json 2>/dev/null || echo "0")
+            echo "Vulnerabilities found (count): $count"
+          else
+            echo "No snyk-results.json generated"
           fi
-        else
-          echo "- ℹ️ Snyk skipped (no token)" >> $GITHUB_STEP_SUMMARY
-        fi
-        echo "- ✅ SBOM generated (CycloneDX format)" >> $GITHUB_STEP_SUMMARY
-        if [ -f sbom.json ]; then
-          echo "**SBOM Components:** $(jq '.components | length' sbom.json)" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "**SBOM Components:** 0 (sbom.json missing)" >> $GITHUB_STEP_SUMMARY
-        fi
+
+          if [ -f snyk.sarif ]; then
+            echo "SARIF generated: snyk.sarif"
+            ls -lh snyk.sarif
+          else
+            echo "Warning: snyk.sarif not generated"
+          fi
+          echo "::endgroup::"
+
+      - name: Snyk skipped (no token)
+        if: ${{ env.SNYK_TOKEN == '' }}
+        run: |
+          echo "::group::Snyk Security Scan (skipped)"
+          echo "SNYK_TOKEN not found in repository/organization secrets. Skipping Snyk scan."
+          echo "::endgroup::"
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: ${{ env.SNYK_TOKEN != '' && always() }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif
+
+      - name: Upload Snyk JSON result artifact
+        if: ${{ env.SNYK_TOKEN != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-results-${{ github.sha }}
+          path: snyk-results.json
+          retention-days: 7
+
+      - name: Generate SBOM with CycloneDX
+        run: |
+          echo "::group::Generating SBOM"
+          if ! command -v cyclonedx-npm &> /dev/null; then
+            npm install -g @cyclonedx/cyclonedx-npm
+          fi
+          cyclonedx-npm --output-file sbom.json
+          echo "SBOM generated successfully"
+          ls -lh sbom.json
+          echo "::endgroup::"
+        timeout-minutes: 3
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.json
+          retention-days: 30
+
+      - name: Security Scan Summary
+        run: |
+          echo "### Security Scan Results :shield:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ESLint analysis completed" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$SNYK_TOKEN" ]; then
+            echo "- ✅ Snyk scan executed (results attached)" >> $GITHUB_STEP_SUMMARY
+            if [ -f snyk-results.json ]; then
+              echo "- **Vulnerabilities:** $(jq '.vulnerabilities | length' snyk-results.json 2>/dev/null || echo 0)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- ℹ️ Snyk skipped (no token)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- ✅ SBOM generated (CycloneDX format)" >> $GITHUB_STEP_SUMMARY
+          if [ -f sbom.json ]; then
+            echo "**SBOM Components:** $(jq '.components | length' sbom.json)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**SBOM Components:** 0 (sbom.json missing)" >> $GITHUB_STEP_SUMMARY
+          fi
 
   test:
     name: Run Tests
