@@ -26,22 +26,28 @@ build: ## Construir imagen Docker
 	docker build -t mi-app:latest .
 	@echo "✓ Imagen construida: mi-app:latest"
 
-deploy: ## Desplegar infraestructura con Terraform
-	@echo "Desplegando con Terraform..."
-	cd terraform && terraform init && terraform apply -auto-approve
-	@echo "✓ Infraestructura desplegada"
+# Variable para workspace (default: manual)
+WORKSPACE ?= manual
 
-up: build deploy ## Construir y desplegar todo
-	@echo "✓ Aplicación lista!"
-	@echo ""
-	@echo "Servicios disponibles:"
-	@echo "  - Aplicación: http://localhost:3000"
-	@echo "  - Prometheus: http://localhost:9090"
-	@echo "  - Grafana:    http://localhost:3001 (admin/admin)"
+deploy: ## Desplegar infraestructura con Terraform
+	@echo "Desplegando con Terraform en workspace $(WORKSPACE)..."
+	cd terraform && \
+	if terraform workspace list | grep -q "$(WORKSPACE)"; then \
+		terraform workspace select "$(WORKSPACE)"; \else \
+	else \
+		terraform workspace new "$(WORKSPACE)"; \
+	fi && \
+	terraform init && terraform apply -auto-approve
+	@echo "✓ Infraestructura desplegada en workspace $(WORKSPACE)"
 
 down: ## Destruir infraestructura
-	@echo "Destruyendo infraestructura..."
-	cd terraform && terraform destroy -auto-approve
+	@echo "Destruyendo infraestructura en workspace $(WORKSPACE)..."
+	cd terraform && \
+	if terraform workspace list | grep -q "$(WORKSPACE)"; then \
+		terraform workspace select "$(WORKSPACE)" && terraform destroy -auto-approve; \
+	else \
+		echo "Workspace $(WORKSPACE) no existe"; \
+	fi
 	@echo "✓ Infraestructura destruida"
 
 clean: down ## Limpiar todo (infraestructura + archivos temporales)
