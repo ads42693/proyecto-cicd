@@ -238,7 +238,7 @@ jobs:
         working-directory: ./terraform
         run: |
           echo "::group::Terraform Init"
-          terraform init
+          terraform init -upgrade
           echo "::endgroup::"
       
       - name: Terraform Validate
