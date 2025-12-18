@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload Snyk JSON result artifact
         if: env.SNYK_TOKEN != ''
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: snyk-results-${{ github.sha }}
           path: snyk-results.json
