@@ -2,10 +2,9 @@ const request = require('supertest');
 const app = require('./app');
 
 describe('API Endpoints', () => {
-  describe('GET /', () => {
+  describe('GET /welcome', () => {
     it('debe responder con mensaje de bienvenida', async () => {
-      process.env.NODE_ENV = 'test'; // fuerza JSON en la ruta /
-      const response = await request(app).get('/');
+      const response = await request(app).get('/welcome');
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('message');
       expect(response.body).toHaveProperty('version');

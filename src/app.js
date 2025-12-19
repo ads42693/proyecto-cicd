@@ -1,4 +1,3 @@
-// src/app.js
 const express = require('express');
 const prometheus = require('prom-client');
 const path = require('path');
@@ -56,16 +55,22 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Rutas
 app.get('/', (req, res) => {
-  // Para tests, devolvemos JSON en vez de HTML
   if (process.env.NODE_ENV === 'test') {
-    res.json({
+    return res.json({
       message: 'Bienvenido al dashboard',
       version: '1.0.0',
       timestamp: new Date().toISOString()
     });
-  } else {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
   }
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+app.get('/welcome', (req, res) => {
+  res.json({
+    message: 'Bienvenido al dashboard',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.get('/health', (req, res) => {
