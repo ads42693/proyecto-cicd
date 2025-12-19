@@ -227,13 +227,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
-      - name: Download Previous Terraform State
-        uses: actions/download-artifact@v4
+
+      - name: Cache Terraform state
+        uses: actions/cache@v3
         with:
-          name: terraform-state-${{ github.sha }}
-          path: terraform/
-        continue-on-error: true
+          path: terraform/terraform.tfstate
+          key: tfstate-${{ runner.os }}-${{ github.ref_name }}
+          restore-keys: |
+            tfstate-${{ runner.os }}-
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
@@ -251,14 +252,6 @@ jobs:
           docker system prune -f || true
           echo "✓ Cleanup completed"
           echo "::endgroup::"
-
-      - name: Cache Terraform state
-        uses: actions/cache@v3
-        with:
-          path: terraform/terraform.tfstate
-          key: tfstate-${{ runner.os }}-${{ github.ref_name }}
-          restore-keys: |
-            tfstate-${{ runner.os }}-
 
       - name: Terraform Init
         working-directory: ./terraform
