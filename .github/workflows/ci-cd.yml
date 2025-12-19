@@ -255,6 +255,10 @@ jobs:
           terraform validate
           echo "::endgroup::"
       
+      - name: Terraform Refresh
+        working-directory: ./terraform
+        run: terraform refresh
+      
       - name: Terraform Plan
         working-directory: ./terraform
         run: |
@@ -357,15 +361,6 @@ jobs:
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
       
-      - name: Cleanup After Deploy
-        if: failure() || cancelled()
-        run: |
-          docker stop mi-app prometheus grafana 2>/dev/null || true
-          docker rm mi-app prometheus grafana 2>/dev/null || true
-          docker network rm app-network 2>/dev/null || true
-          docker volume rm prometheus-data grafana-data 2>/dev/null || true
-          docker system prune -f || true
-
   pipeline-summary:
     name: Pipeline Summary
     runs-on: self-hosted

@@ -17,7 +17,7 @@ jobs:
 
       - name: Terraform Destroy
         working-directory: ./terraform
-        run: terraform destroy -auto-approve
+        run: terraform destroy -auto-approve -refresh=true
 
       - name: Cleanup Docker
         run: |
@@ -26,3 +26,4 @@ jobs:
           docker network rm app-network 2>/dev/null || true
           docker volume rm prometheus-data grafana-data 2>/dev/null || true
           docker system prune -f || true
+          rm -f terraform/terraform.tfstate || true
