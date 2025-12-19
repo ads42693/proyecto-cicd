@@ -241,18 +241,6 @@ jobs:
         with:
           terraform_version: 1.13.4
       
-      - name: Cleanup Existing Infrastructure
-        run: |
-          echo "::group::Cleanup Existing Containers"
-          # Detener y remover contenedores existentes para evitar conflictos
-          docker stop mi-app prometheus grafana 2>/dev/null || true
-          docker rm mi-app prometheus grafana 2>/dev/null || true
-          docker network rm app-network 2>/dev/null || true
-          docker volume rm prometheus-data grafana-data 2>/dev/null || true
-          docker system prune -f || true
-          echo "✓ Cleanup completed"
-          echo "::endgroup::"
-
       - name: Terraform Init
         working-directory: ./terraform
         run: |
