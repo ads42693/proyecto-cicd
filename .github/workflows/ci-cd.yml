@@ -372,11 +372,6 @@ jobs:
           # Subir el state (crea la Release si no existe)
           gh release upload terraform-state terraform/terraform.tfstate --clobber
           echo "✅ State uploaded to Release"
-
-          # Borrar los assets automáticos que GitHub adjunta
-          gh release delete-asset terraform-state proyecto-cicd-terraform-state.zip || true
-          gh release delete-asset terraform-state proyecto-cicd-terraform-state.tar.gz || true
-          echo "✅ Default source code assets removed"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

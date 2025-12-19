@@ -70,5 +70,6 @@ jobs:
         run: |
           echo "Deleting entire Release 'terraform-state'..."
           gh release delete terraform-state --yes || echo "No Release to delete"
+          echo "✅ Release removed"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
