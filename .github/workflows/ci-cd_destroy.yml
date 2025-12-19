@@ -10,6 +10,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Download Terraform state
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-state
+          path: terraform/
+        continue-on-error: true
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -24,36 +31,26 @@ jobs:
 
       - name: Terraform Init
         working-directory: ./terraform
-        run: |
-          echo "::group::Terraform Init"
-          terraform init -upgrade
-          echo "::endgroup::"
+        run: terraform init -upgrade
 
       - name: Terraform Destroy
         working-directory: ./terraform
-        run: |
-          echo "::group::Terraform Destroy"
-          terraform destroy -auto-approve -refresh=true || true
-          echo "::endgroup::"
+        run: terraform destroy -auto-approve -refresh=true || true
 
       - name: Cleanup Docker and Terraform State
         run: |
-          echo "::group::Cleanup Docker and Terraform State"
           docker stop mi-app prometheus grafana 2>/dev/null || true
           docker rm mi-app prometheus grafana 2>/dev/null || true
           docker network rm app-network 2>/dev/null || true
           docker volume rm prometheus-data grafana-data 2>/dev/null || true
           docker system prune -f || true
-          # Reset Terraform state and lock
           rm -f terraform/terraform.tfstate || true
-          rm -f terraform/.terraform.lock.hcl || true
           rm -rf terraform/.terraform || true
           echo "✓ Cleanup completed, state reset"
-          echo "::endgroup::"
-      
-      - name: Invalidate Cache
-        uses: actions/cache@v3
-        with:
-          path: terraform/terraform.tfstate
-          key: tfstate-${{ runner.os }}-${{ github.ref_name }}
 
+      - name: Upload Empty Terraform State
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state
+          path: terraform/
+          retention-days: 30
