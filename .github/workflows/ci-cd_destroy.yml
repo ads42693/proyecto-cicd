@@ -66,9 +66,9 @@ jobs:
           rm -rf terraform/.terraform || true
           echo "✓ Cleanup completed"
 
-      - name: Remove Terraform state asset from Release
+      - name: Delete Terraform Release
         run: |
-          echo "Deleting state asset from Release..."
-          gh release delete-asset terraform-state terraform.tfstate || echo "No asset to delete"
+          echo "Deleting entire Release 'terraform-state'..."
+          gh release delete terraform-state --yes || echo "No Release to delete"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
