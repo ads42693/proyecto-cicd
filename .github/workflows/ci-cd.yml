@@ -252,11 +252,11 @@ jobs:
         run: |
           gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "No previous state found"
           if [ -f terraform/terraform.tfstate ]; then
-            mv terraform/terraform.tfstate terraform/terraform.tfstate.old
+            cp terraform/terraform.tfstate terraform/terraform.tfstate.old
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Debug downloaded state
         run: |
           echo "Contents of terraform/:"
