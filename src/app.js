@@ -144,6 +144,11 @@ app.get('/api/simulate-load', (req, res) => {
   }, delay);
 });
 
+// Ruta de prueba para forzar error (para tests)
+app.get('/error', (req, res, next) => {
+  next(new Error('Ruta de prueba de error'));
+});
+
 // Manejo de errores
 app.use((err, req, res, next) => {
   console.error(err.stack);
