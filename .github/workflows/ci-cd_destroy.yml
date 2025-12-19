@@ -37,6 +37,7 @@ jobs:
           docker network rm app-network 2>/dev/null || true
           docker volume rm prometheus-data grafana-data 2>/dev/null || true
           docker system prune -f || true
+          rm -f terraform/terraform.tfstate terraform/.terraform.lock.hcl || true
           rm -f terraform/terraform.tfstate || true
           echo "✓ Cleanup completed"
           echo "::endgroup::"
