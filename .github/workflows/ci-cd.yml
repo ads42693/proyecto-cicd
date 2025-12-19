@@ -377,11 +377,17 @@ jobs:
           echo "::endgroup::"
         continue-on-error: true
 
-      - name: Upload Terraform state and clean Release
+      - name: Create/Update Terraform Release
         run: |
-          # Subir el state (crea la Release si no existe)
-          gh release upload terraform-state terraform/terraform.tfstate --clobber
-          echo "✅ State uploaded to Release"
+          if gh release view terraform-state >/dev/null 2>&1; then
+            echo "✅ Release 'terraform-state' existe, actualizando asset..."
+            gh release upload terraform-state terraform/terraform.tfstate --clobber
+          else
+            echo "⚠️ Release 'terraform-state' no existe, creando..."
+            gh release create terraform-state terraform/terraform.tfstate \
+              --title "Terraform State" \
+              --notes "Release para almacenar el tfstate"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
