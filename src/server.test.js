@@ -1,16 +1,11 @@
 const request = require('supertest');
-const { app, server } = require('./server');
-
-afterAll(() => {
-  // Cerrar el servidor al terminar los tests
-  server.close();
-});
+const app = require('./app');
 
 describe('API Endpoints', () => {
   describe('GET /', () => {
     it('debe responder con mensaje de bienvenida', async () => {
+      process.env.NODE_ENV = 'test'; // fuerza JSON en la ruta /
       const response = await request(app).get('/');
-      
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('message');
       expect(response.body).toHaveProperty('version');
@@ -21,7 +16,6 @@ describe('API Endpoints', () => {
   describe('GET /health', () => {
     it('debe responder con estado healthy', async () => {
       const response = await request(app).get('/health');
-      
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('healthy');
       expect(response.body).toHaveProperty('uptime');
@@ -32,7 +26,6 @@ describe('API Endpoints', () => {
   describe('GET /api/data', () => {
     it('debe retornar un array de datos', async () => {
       const response = await request(app).get('/api/data');
-      
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('data');
       expect(Array.isArray(response.body.data)).toBe(true);
@@ -47,7 +40,6 @@ describe('API Endpoints', () => {
         .post('/api/echo')
         .send(testData)
         .set('Content-Type', 'application/json');
-      
       expect(response.status).toBe(200);
       expect(response.body.received).toEqual(testData);
       expect(response.body).toHaveProperty('timestamp');
@@ -57,7 +49,6 @@ describe('API Endpoints', () => {
   describe('GET /metrics', () => {
     it('debe exponer métricas de Prometheus', async () => {
       const response = await request(app).get('/metrics');
-      
       expect(response.status).toBe(200);
       expect(response.text).toContain('http_requests_total');
     });
@@ -66,9 +57,9 @@ describe('API Endpoints', () => {
   describe('GET /nonexistent', () => {
     it('debe retornar 404 para rutas no existentes', async () => {
       const response = await request(app).get('/nonexistent');
-      
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toBe('Ruta no encontrada');
     });
   });
 });
