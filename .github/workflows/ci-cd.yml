@@ -237,27 +237,19 @@ jobs:
           tar xzf gh.tar.gz
           echo "${PWD}/gh_2.63.0_linux_amd64/bin" >> $GITHUB_PATH
 
-      - name: Ensure Release exists
-        run: |
-          if ! gh release view terraform-state >/dev/null 2>&1; then
-            echo "Creating Release 'terraform-state'..."
-            gh release create terraform-state --title "Terraform State" --notes "Release for storing tfstate"
-            echo "✅ Release 'terraform-state' created"
-          else
-            echo "Release 'terraform-state' already exists"
-            echo "✅ Release check passed"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Download previous Terraform state
         run: |
-          gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "No previous state found"
-          if [ -f terraform/terraform.tfstate ]; then
-            cp terraform/terraform.tfstate terraform/terraform.tfstate.old
-            echo "✅ Previous state downloaded and backup created"
+          if gh release view terraform-state >/dev/null 2>&1; then
+            echo "✅ Release 'terraform-state' exists, downloading state..."
+            gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "⚠️ No previous state found"
+            if [ -f terraform/terraform.tfstate ]; then
+              cp terraform/terraform.tfstate terraform/terraform.tfstate.old
+              echo "✅ Previous state downloaded and backup created"
+            else
+              echo "⚠️ No state file present after download"
+            fi
           else
-            echo "⚠️ No state file present after download"
+            echo "⚠️ Release 'terraform-state' does not exist yet, skipping download"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -377,13 +369,13 @@ jobs:
 
       - name: Upload Terraform state and clean Release
         run: |
-          # Subir el state
+          # Subir el state (crea la Release si no existe)
           gh release upload terraform-state terraform/terraform.tfstate --clobber
           echo "✅ State uploaded to Release"
 
           # Borrar los assets automáticos que GitHub adjunta
-          gh release delete-asset terraform-state "Source code (zip)" || true
-          gh release delete-asset terraform-state "Source code (tar.gz)" || true
+          gh release delete-asset terraform-state proyecto-cicd-terraform-state.zip || true
+          gh release delete-asset terraform-state proyecto-cicd-terraform-state.tar.gz || true
           echo "✅ Default source code assets removed"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
