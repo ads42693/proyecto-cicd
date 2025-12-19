@@ -79,6 +79,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     memory: process.memoryUsage(),
+    // Comentario: aquí se muestra el valor de NODE_ENV.
+    // Actualmente trabajas todo en "main" sin ambientes separados,
+    // pero este campo te sirve para saber en qué modo corre la app.
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -150,8 +153,13 @@ app.get('/error', (req, res, next) => {
 });
 
 // Manejo de errores
-app.use((err, req, res, next) => {
-  console.error(err.stack);
+app.use((err, req, res, _next) => {
+  // Buenas prácticas:
+  // - Solo mostrar stack en desarrollo.
+  // - En test y producción, no imprimirlo para evitar ruido o fuga de información.
+  if (process.env.NODE_ENV === 'development') {
+    console.error(err.stack);
+  }
   res.status(500).json({
     error: 'Error interno del servidor',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined,

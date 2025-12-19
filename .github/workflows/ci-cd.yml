@@ -251,7 +251,15 @@ jobs:
           docker system prune -f || true
           echo "✓ Cleanup completed"
           echo "::endgroup::"
-      
+
+      - name: Cache Terraform state
+        uses: actions/cache@v3
+        with:
+          path: terraform/terraform.tfstate
+          key: tfstate-${{ runner.os }}-${{ github.ref_name }}
+          restore-keys: |
+            tfstate-${{ runner.os }}-
+
       - name: Terraform Init
         working-directory: ./terraform
         run: |
@@ -411,12 +419,11 @@ jobs:
       - name: Collect Deliverables
         run: |
           mkdir deliverables
-          cp .github/workflows/ci_cd.yml deliverables/
+          cp .github/workflows/*.yml deliverables/ || true
           cp terraform/*.tf deliverables/
           cp Dockerfile deliverables/
           cp mi-app-${{ github.sha }}.tar.gz deliverables/ || true
           cp sbom.json deliverables/ || true
-          # opcional: incluir coverage o resultados de seguridad
           ls -lh deliverables
 
       - name: Create Archive
