@@ -241,7 +241,7 @@ jobs:
         run: |
           if ! gh release view terraform-state >/dev/null 2>&1; then
             echo "Creating Release 'terraform-state'..."
-            gh release create terraform-state --title "Terraform State" --notes "Release for storing tfstate"
+            gh release create terraform-state --title "Terraform State" --notes "Release for storing tfstate"            echo "Release 'terraform-state' already exists"
           else
             echo "Release 'terraform-state' already exists"
           fi
