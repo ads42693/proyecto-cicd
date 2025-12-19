@@ -54,11 +54,11 @@ jobs:
           docker system prune -f || true
           rm -f terraform/terraform.tfstate || true
           rm -rf terraform/.terraform || true
-          echo "{}" > terraform/terraform.tfstate   # subir un state vacío
           echo "✓ Cleanup completed, state reset"
 
-      - name: Upload Empty Terraform State to Release
+      - name: Remove Terraform state asset from Release
         run: |
-          gh release upload terraform-state terraform/terraform.tfstate --clobber
+          echo "Deleting state asset from Release..."
+          gh release delete-asset terraform-state terraform.tfstate || echo "No asset to delete"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
