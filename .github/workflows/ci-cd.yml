@@ -235,13 +235,12 @@ jobs:
           echo "Contents of terraform/:"
           ls -la terraform/
 
-      - name: Cache Terraform state
-        uses: actions/cache@v3
+      - name: Download Terraform state
+        uses: actions/download-artifact@v4
         with:
-          path: terraform/terraform.tfstate
-          key: tfstate-${{ runner.os }}-${{ github.ref_name }}
-          restore-keys: |
-            tfstate-${{ runner.os }}-
+          name: terraform-state
+          path: terraform/
+          continue-on-error: true
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
@@ -348,7 +347,7 @@ jobs:
       - name: Upload Terraform State
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-state-${{ github.sha }}
+          name: terraform-state
           path: terraform/terraform.tfstate
           retention-days: 30
         continue-on-error: true
