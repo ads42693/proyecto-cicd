@@ -50,3 +50,10 @@ jobs:
           rm -rf terraform/.terraform || true
           echo "✓ Cleanup completed, state reset"
           echo "::endgroup::"
+      
+      - name: Invalidate Cache
+        uses: actions/cache@v3
+        with:
+          path: terraform/terraform.tfstate
+          key: tfstate-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+
