@@ -31,7 +31,7 @@ resource "docker_image" "app" {
 }
 
 resource "docker_container" "app" {
-  name  = "mi-app"
+  name  = "proyecto-cicd-app"
   image = docker_image.app.image_id
 
   ports {

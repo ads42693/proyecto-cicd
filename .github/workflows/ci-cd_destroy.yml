@@ -7,7 +7,7 @@ jobs:
   destroy:
     runs-on: self-hosted
     permissions:
-      contents: write   # necesario para manejar releases
+      contents: write
 
     steps:
       - name: Checkout code
@@ -15,30 +15,39 @@ jobs:
 
       - name: Install GitHub CLI
         run: |
+          echo "Instalando GitHub CLI..."
           curl -fsSL https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz -o gh.tar.gz
           tar xzf gh.tar.gz
           echo "${PWD}/gh_2.63.0_linux_amd64/bin" >> $GITHUB_PATH
+          echo "✅ GitHub CLI instalado"
 
       - name: Download Terraform state from Release
         run: |
-          gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "No previous state found"
+          echo "Intentando descargar terraform.tfstate desde la Release..."
+          gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "⚠️ No se encontró un estado previo"
+          ls -la terraform/ || echo "⚠️ El directorio terraform/ no existe"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate Terraform state
         run: |
           if [ -f terraform/terraform.tfstate ]; then
+            echo "Validando terraform.tfstate..."
             if ! grep -q '"version"' terraform/terraform.tfstate; then
-              echo "State file corrupt, removing..."
+              echo "❌ Archivo de estado corrupto, eliminando..."
               rm terraform/terraform.tfstate
+            else
+              echo "✅ Archivo de estado válido"
             fi
+          else
+            echo "⚠️ No hay archivo de estado para validar"
           fi
 
       - name: Debug Workspace
         run: |
-          echo "Current directory:"
+          echo "Directorio actual:"
           pwd
-          echo "Contents of terraform/:"
+          echo "Contenido de terraform/:"
           ls -la terraform/
 
       - name: Set up Terraform
@@ -49,14 +58,20 @@ jobs:
       - name: Terraform Init
         working-directory: ./terraform
         run: |
-          terraform init -upgrade || (echo "Init failed, cleaning state..." && rm -f terraform/terraform.tfstate && terraform init -upgrade)
+          echo "Ejecutando terraform init..."
+          terraform init -upgrade
+          echo "✅ Terraform init completado"
 
       - name: Terraform Destroy
         working-directory: ./terraform
-        run: terraform destroy -auto-approve -refresh=true || true
+        run: |
+          echo "Ejecutando terraform destroy..."
+          terraform destroy -auto-approve -refresh=true || true
+          echo "✅ Terraform destroy completado"
 
       - name: Cleanup Docker resources
         run: |
+          echo "Limpiando recursos de Docker..."
           docker stop mi-app prometheus grafana 2>/dev/null || true
           docker rm mi-app prometheus grafana 2>/dev/null || true
           docker network rm app-network 2>/dev/null || true
@@ -64,12 +79,12 @@ jobs:
           docker system prune -f || true
           rm -f terraform/terraform.tfstate || true
           rm -rf terraform/.terraform || true
-          echo "✓ Cleanup completed"
+          echo "✅ Limpieza de Docker completada"
 
       - name: Delete Terraform Release
         run: |
-          echo "Deleting entire Release 'terraform-state'..."
-          gh release delete terraform-state --yes || echo "No Release to delete"
-          echo "✅ Release removed"
+          echo "Eliminando la Release completa 'terraform-state'..."
+          gh release delete terraform-state --yes || echo "⚠️ No existe la Release para eliminar"
+          echo "✅ Release eliminada"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
