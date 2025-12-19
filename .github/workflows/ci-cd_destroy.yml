@@ -25,6 +25,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Validate Terraform state
+        run: |
+          if [ -f terraform/terraform.tfstate ]; then
+            if ! grep -q '"version"' terraform/terraform.tfstate; then
+              echo "State file corrupt, removing..."
+              rm terraform/terraform.tfstate
+            fi
+          fi
+
       - name: Debug Workspace
         run: |
           echo "Current directory:"
@@ -39,13 +48,14 @@ jobs:
 
       - name: Terraform Init
         working-directory: ./terraform
-        run: terraform init -upgrade
+        run: |
+          terraform init -upgrade || (echo "Init failed, cleaning state..." && rm -f terraform/terraform.tfstate && terraform init -upgrade)
 
       - name: Terraform Destroy
         working-directory: ./terraform
         run: terraform destroy -auto-approve -refresh=true || true
 
-      - name: Cleanup Docker and Terraform State
+      - name: Cleanup Docker resources
         run: |
           docker stop mi-app prometheus grafana 2>/dev/null || true
           docker rm mi-app prometheus grafana 2>/dev/null || true
@@ -54,7 +64,7 @@ jobs:
           docker system prune -f || true
           rm -f terraform/terraform.tfstate || true
           rm -rf terraform/.terraform || true
-          echo "✓ Cleanup completed, state reset"
+          echo "✓ Cleanup completed"
 
       - name: Remove Terraform state asset from Release
         run: |
