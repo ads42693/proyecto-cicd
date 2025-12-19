@@ -15,6 +15,13 @@ jobs:
         with:
           terraform_version: 1.13.4
 
+      - name: Debug Workspace
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Contents of terraform/:"
+          ls -la terraform/
+
       - name: Terraform Init
         working-directory: ./terraform
         run: |
