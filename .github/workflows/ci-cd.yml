@@ -224,23 +224,35 @@ jobs:
     name: Deploy Infrastructure
     runs-on: self-hosted
     needs: build
+    permissions:
+      contents: write
+      metadata: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Debug Workspace
+      - name: Install GitHub CLI
         run: |
-          echo "Current directory:"
-          pwd
-          echo "Contents of terraform/:"
-          ls -la terraform/
+          sudo apt-get update
+          sudo apt-get install -y gh
 
-      - name: Download Terraform state
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-state
-          path: terraform/
-        continue-on-error: true
+      - name: Ensure Release exists
+        run: |
+          if ! gh release view terraform-state >/dev/null 2>&1; then
+            echo "Creating Release 'terraform-state'..."
+            gh release create terraform-state --title "Terraform State" --notes "Release for storing tfstate"
+          else
+            echo "Release 'terraform-state' already exists"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Download previous Terraform state
+        run: |
+          gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "No previous state found"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
@@ -344,19 +356,36 @@ jobs:
           echo "::endgroup::"
         continue-on-error: true
       
-      - name: Upload Terraform State
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-state
-          path: terraform/terraform.tfstate
-          retention-days: 30
-        continue-on-error: true
+      - name: Compare Terraform state
+        id: statecheck
+        run: |
+          if [ -f terraform/terraform.tfstate ]; then
+            if [ -f terraform/terraform.tfstate.old ]; then
+              if cmp -s terraform/terraform.tfstate terraform/terraform.tfstate.old; then
+                echo "changed=false" >> $GITHUB_OUTPUT
+              else
+                echo "changed=true" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+
+      - name: Upload new Terraform state
+        if: steps.statecheck.outputs.changed == 'true'
+        run: |
+          echo "Uploading new Terraform state..."
+          gh release upload terraform-state terraform/terraform.tfstate --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deployment Summary
         run: |
           echo "### Deployment Results :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Infrastructure deployed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ State stored in Release 'terraform-state'" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ All services are healthy and verified" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Services:**" >> $GITHUB_STEP_SUMMARY
