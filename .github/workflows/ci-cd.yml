@@ -8,7 +8,7 @@ on:
   workflow_dispatch:  # Permite ejecutar manualmente
 
 env:
-  DOCKER_IMAGE: mi-app
+  DOCKER_IMAGE: proyecto-cicd-app
   DOCKER_TAG: ${{ github.sha }}
 
 jobs:
@@ -206,15 +206,15 @@ jobs:
       - name: Save Docker Image
         run: |
           echo "::group::Saving Image"
-          docker save ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }} | gzip > mi-app-${{ github.sha }}.tar.gz
-          ls -lh mi-app-${{ github.sha }}.tar.gz
+          docker save ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }} | gzip > proyecto-cicd-app-${{ github.sha }}.tar.gz
+          ls -lh proyecto-cicd-app-${{ github.sha }}.tar.gz
           echo "::endgroup::"
       
       - name: Upload Image Artifact
         uses: actions/upload-artifact@v4
         with:
           name: docker-image-${{ github.sha }}
-          path: mi-app-${{ github.sha }}.tar.gz
+          path: proyecto-cicd-app-${{ github.sha }}.tar.gz
           retention-days: 7
 
       - name: Build Summary
@@ -333,7 +333,7 @@ jobs:
           
           # Verificar que los contenedores estén corriendo
           echo "Checking containers..."
-          docker ps | grep mi-app || { echo "❌ mi-app not running"; exit 1; }
+          docker ps | grep proyecto-cicd-app || { echo "❌ proyecto-cicd-app not running"; exit 1; }
           docker ps | grep prometheus || { echo "❌ prometheus not running"; exit 1; }
           docker ps | grep grafana || { echo "❌ grafana not running"; exit 1; }
           
@@ -438,7 +438,7 @@ jobs:
           cp .github/workflows/*.yml deliverables/ || true
           cp terraform/*.tf deliverables/
           cp Dockerfile deliverables/
-          cp mi-app-${{ github.sha }}.tar.gz deliverables/ || true
+          cp proyecto-cicd-app-${{ github.sha }}.tar.gz deliverables/ || true
           cp sbom.json deliverables/ || true
           ls -lh deliverables
 
