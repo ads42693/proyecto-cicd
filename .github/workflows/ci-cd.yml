@@ -358,14 +358,20 @@ jobs:
       
       - name: Compare Terraform state
         id: statecheck
-        run: if [ -f terraform/terraform.tfstate ]; then
-          if cmp -s terraform/terraform.tfstate terraform/terraform.tfstate.old; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+        run: |
+          if [ -f terraform/terraform.tfstate ]; then
+            if [ -f terraform/terraform.tfstate.old ]; then
+              if cmp -s terraform/terraform.tfstate terraform/terraform.tfstate.old; then
+                echo "changed=false" >> $GITHUB_OUTPUT
+              else
+                echo "changed=true" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
           else
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
-        else
-          echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Upload new Terraform state
         if: steps.statecheck.outputs.changed == 'true'
