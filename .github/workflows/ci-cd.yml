@@ -376,7 +376,7 @@ jobs:
   pipeline-summary:
     name: Pipeline Summary
     runs-on: self-hosted
-    needs: [security-scan, test, build, deploy]
+    needs: [security-scan, build, deploy]
     if: always()
     steps:
       - name: Generate Pipeline Summary
