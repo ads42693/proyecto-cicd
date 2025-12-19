@@ -241,13 +241,13 @@ jobs:
         run: |
           if ! gh release view terraform-state >/dev/null 2>&1; then
             echo "Creating Release 'terraform-state'..."
-            gh release create terraform-state --title "Terraform State" --notes "Release for storing tfstate"            echo "Release 'terraform-state' already exists"
+            gh release create terraform-state --title "Terraform State" --notes "Release for storing tfstate"
           else
             echo "Release 'terraform-state' already exists"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Download previous Terraform state
         run: |
           gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "No previous state found"
