@@ -240,7 +240,7 @@ jobs:
         with:
           name: terraform-state
           path: terraform/
-          continue-on-error: true
+        continue-on-error: true
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
