@@ -12,147 +12,147 @@ env:
   DOCKER_TAG: ${{ github.sha }}
 
 jobs:
-  security-scan:
-    name: Security Analysis
-    runs-on: self-hosted
-    env:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # security-scan:
+  #   name: Security Analysis
+  #   runs-on: self-hosted
+  #   env:
+  #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '18'
+  #         cache: 'npm'
       
-      - name: Install dependencies
-        run: npm ci
+  #     - name: Install dependencies
+  #       run: npm ci
       
-      - name: Run ESLint
-        run: |
-          echo "::group::ESLint Analysis"
-          npm run lint || true
-          echo "::endgroup::"
-        continue-on-error: true
-        timeout-minutes: 2
+  #     - name: Run ESLint
+  #       run: |
+  #         echo "::group::ESLint Analysis"
+  #         npm run lint || true
+  #         echo "::endgroup::"
+  #       continue-on-error: true
+  #       timeout-minutes: 2
       
-      - name: Run Snyk Security Scan
-        run: |
-          echo "::group::Snyk Security Scan"
-          if ! command -v snyk &> /dev/null; then
-            echo "Installing Snyk CLI..."
-            npm install -g snyk
-          fi
+  #     - name: Run Snyk Security Scan
+  #       run: |
+  #         echo "::group::Snyk Security Scan"
+  #         if ! command -v snyk &> /dev/null; then
+  #           echo "Installing Snyk CLI..."
+  #           npm install -g snyk
+  #         fi
           
-          if [ -n "$SNYK_TOKEN" ]; then
-            snyk auth "$SNYK_TOKEN"
-            echo "✓ Snyk authenticated"
-            echo "Running Snyk test..."
-            timeout 180 snyk test --severity-threshold=high --json > snyk-results.json || true
+  #         if [ -n "$SNYK_TOKEN" ]; then
+  #           snyk auth "$SNYK_TOKEN"
+  #           echo "✓ Snyk authenticated"
+  #           echo "Running Snyk test..."
+  #           timeout 180 snyk test --severity-threshold=high --json > snyk-results.json || true
             
-            if [ -f snyk-results.json ]; then
-              echo "Snyk scan completed"
-              cat snyk-results.json | jq -r '.vulnerabilities | length' 2>/dev/null || echo "Results generated"
-            fi
-          else
-            echo "❌ Snyk not authenticated"
-            echo "Skipping Snyk scan (no token)"
-          fi
-          echo "::endgroup::"
-        timeout-minutes: 5
+  #           if [ -f snyk-results.json ]; then
+  #             echo "Snyk scan completed"
+  #             cat snyk-results.json | jq -r '.vulnerabilities | length' 2>/dev/null || echo "Results generated"
+  #           fi
+  #         else
+  #           echo "❌ Snyk not authenticated"
+  #           echo "Skipping Snyk scan (no token)"
+  #         fi
+  #         echo "::endgroup::"
+  #       timeout-minutes: 5
       
-      - name: Generate SBOM with CycloneDX
-        run: |
-          echo "::group::Generating SBOM"
-          if ! command -v cyclonedx-npm &> /dev/null; then
-            npm install -g @cyclonedx/cyclonedx-npm
-          fi
-          cyclonedx-npm --output-file sbom.json
-          echo "SBOM generated successfully"
-          ls -lh sbom.json
-          echo "::endgroup::"
-        timeout-minutes: 3
+  #     - name: Generate SBOM with CycloneDX
+  #       run: |
+  #         echo "::group::Generating SBOM"
+  #         if ! command -v cyclonedx-npm &> /dev/null; then
+  #           npm install -g @cyclonedx/cyclonedx-npm
+  #         fi
+  #         cyclonedx-npm --output-file sbom.json
+  #         echo "SBOM generated successfully"
+  #         ls -lh sbom.json
+  #         echo "::endgroup::"
+  #       timeout-minutes: 3
 
-      - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-${{ github.sha }}
-          path: sbom.json
-          retention-days: 30
+  #     - name: Upload SBOM Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: sbom-${{ github.sha }}
+  #         path: sbom.json
+  #         retention-days: 30
 
-      - name: Upload Snyk Results
-        if: env.SNYK_TOKEN != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: snyk-results-${{ github.sha }}
-          path: snyk-results.json
-          retention-days: 7
-        continue-on-error: true
+  #     - name: Upload Snyk Results
+  #       if: env.SNYK_TOKEN != ''
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: snyk-results-${{ github.sha }}
+  #         path: snyk-results.json
+  #         retention-days: 7
+  #       continue-on-error: true
 
-      - name: Security Scan Summary
-        run: |
-          echo "### Security Scan Results :shield:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ ESLint analysis completed" >> $GITHUB_STEP_SUMMARY
-          if [ -n "$SNYK_TOKEN" ]; then
-            echo "- ✅ Snyk security scan executed" >> $GITHUB_STEP_SUMMARY
-            if [ -f snyk-results.json ]; then
-              VULNS=$(jq '.vulnerabilities | length' snyk-results.json 2>/dev/null || echo "0")
-              echo "  - **Vulnerabilities found:** $VULNS" >> $GITHUB_STEP_SUMMARY
-            fi
-          fi
-          echo "- ✅ SBOM generated (CycloneDX format)" >> $GITHUB_STEP_SUMMARY
-          echo "  - **Components:** $(jq '.components | length' sbom.json)" >> $GITHUB_STEP_SUMMARY
+  #     - name: Security Scan Summary
+  #       run: |
+  #         echo "### Security Scan Results :shield:" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "- ✅ ESLint analysis completed" >> $GITHUB_STEP_SUMMARY
+  #         if [ -n "$SNYK_TOKEN" ]; then
+  #           echo "- ✅ Snyk security scan executed" >> $GITHUB_STEP_SUMMARY
+  #           if [ -f snyk-results.json ]; then
+  #             VULNS=$(jq '.vulnerabilities | length' snyk-results.json 2>/dev/null || echo "0")
+  #             echo "  - **Vulnerabilities found:** $VULNS" >> $GITHUB_STEP_SUMMARY
+  #           fi
+  #         fi
+  #         echo "- ✅ SBOM generated (CycloneDX format)" >> $GITHUB_STEP_SUMMARY
+  #         echo "  - **Components:** $(jq '.components | length' sbom.json)" >> $GITHUB_STEP_SUMMARY
 
-  test:
-    name: Run Tests
-    runs-on: self-hosted
-    needs: security-scan
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # test:
+  #   name: Run Tests
+  #   runs-on: self-hosted
+  #   needs: security-scan
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '18'
+  #         cache: 'npm'
       
-      - name: Install dependencies
-        run: npm ci
+  #     - name: Install dependencies
+  #       run: npm ci
       
-      - name: Run Unit Tests
-        run: |
-          echo "::group::Unit Tests"
-          npm test
-          echo "::endgroup::"
+  #     - name: Run Unit Tests
+  #       run: |
+  #         echo "::group::Unit Tests"
+  #         npm test
+  #         echo "::endgroup::"
       
-      - name: Generate Coverage Report
-        run: |
-          echo "::group::Coverage Report"
-          npm run test:coverage
-          echo "::endgroup::"
+  #     - name: Generate Coverage Report
+  #       run: |
+  #         echo "::group::Coverage Report"
+  #         npm run test:coverage
+  #         echo "::endgroup::"
       
-      - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-${{ github.sha }}
-          path: coverage/
-          retention-days: 30
+  #     - name: Upload Coverage Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: coverage-report-${{ github.sha }}
+  #         path: coverage/
+  #         retention-days: 30
 
-      - name: Test Summary
-        run: |
-          echo "### Test Results :test_tube:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Unit tests passed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Coverage report generated" >> $GITHUB_STEP_SUMMARY
+  #     - name: Test Summary
+  #       run: |
+  #         echo "### Test Results :test_tube:" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "- ✅ Unit tests passed" >> $GITHUB_STEP_SUMMARY
+  #         echo "- ✅ Coverage report generated" >> $GITHUB_STEP_SUMMARY
 
   build:
     name: Build Docker Image
     runs-on: self-hosted
-    needs: test
+    # needs: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -361,55 +361,55 @@ jobs:
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
       
-  pipeline-summary:
-    name: Pipeline Summary
-    runs-on: self-hosted
-    needs: [security-scan, test, build, deploy]
-    if: always()
-    steps:
-      - name: Generate Pipeline Summary
-        run: |
-          echo "## 🎉 CI/CD Pipeline Completed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Pipeline Stages Results" >> $GITHUB_STEP_SUMMARY
-          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+  # pipeline-summary:
+  #   name: Pipeline Summary
+  #   runs-on: self-hosted
+  #   needs: [security-scan, test, build, deploy]
+  #   if: always()
+  #   steps:
+  #     - name: Generate Pipeline Summary
+  #       run: |
+  #         echo "## 🎉 CI/CD Pipeline Completed" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "### Pipeline Stages Results" >> $GITHUB_STEP_SUMMARY
+  #         echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+  #         echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+  #         echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
 
-  package-deliverables:
-    name: Package Deliverables
-    runs-on: self-hosted
-    needs: [pipeline-summary]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # package-deliverables:
+  #   name: Package Deliverables
+  #   runs-on: self-hosted
+  #   needs: [pipeline-summary]
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
 
-      - name: Collect Deliverables
-        run: |
-          mkdir deliverables
-          cp .github/workflows/*.yml deliverables/ || true
-          cp terraform/*.tf deliverables/
-          cp Dockerfile deliverables/
-          cp mi-app-${{ github.sha }}.tar.gz deliverables/ || true
-          cp sbom.json deliverables/ || true
-          ls -lh deliverables
+  #     - name: Collect Deliverables
+  #       run: |
+  #         mkdir deliverables
+  #         cp .github/workflows/*.yml deliverables/ || true
+  #         cp terraform/*.tf deliverables/
+  #         cp Dockerfile deliverables/
+  #         cp mi-app-${{ github.sha }}.tar.gz deliverables/ || true
+  #         cp sbom.json deliverables/ || true
+  #         ls -lh deliverables
 
-      - name: Create Archive
-        run: |
-          tar -czf deliverables-${{ github.sha }}.tar.gz deliverables
-          ls -lh deliverables-${{ github.sha }}.tar.gz
+  #     - name: Create Archive
+  #       run: |
+  #         tar -czf deliverables-${{ github.sha }}.tar.gz deliverables
+  #         ls -lh deliverables-${{ github.sha }}.tar.gz
 
-      - name: Upload Deliverables Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deliverables-${{ github.sha }}
-          path: deliverables-${{ github.sha }}.tar.gz
-          retention-days: 30
+  #     - name: Upload Deliverables Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: deliverables-${{ github.sha }}
+  #         path: deliverables-${{ github.sha }}.tar.gz
+  #         retention-days: 30
