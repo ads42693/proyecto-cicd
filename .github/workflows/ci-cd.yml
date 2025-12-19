@@ -226,7 +226,6 @@ jobs:
     needs: build
     permissions:
       contents: write
-      metadata: read
 
     steps:
       - name: Checkout code
