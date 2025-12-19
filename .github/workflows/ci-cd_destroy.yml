@@ -15,15 +15,28 @@ jobs:
         with:
           terraform_version: 1.13.4
 
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          echo "::group::Terraform Init"
+          terraform init -upgrade
+          echo "::endgroup::"
+
       - name: Terraform Destroy
         working-directory: ./terraform
-        run: terraform destroy -auto-approve -refresh=true
+        run: |
+          echo "::group::Terraform Destroy"
+          terraform destroy -auto-approve -refresh=true
+          echo "::endgroup::"
 
       - name: Cleanup Docker
         run: |
+          echo "::group::Cleanup Docker"
           docker stop mi-app prometheus grafana 2>/dev/null || true
           docker rm mi-app prometheus grafana 2>/dev/null || true
           docker network rm app-network 2>/dev/null || true
           docker volume rm prometheus-data grafana-data 2>/dev/null || true
           docker system prune -f || true
           rm -f terraform/terraform.tfstate || true
+          echo "✓ Cleanup completed"
+          echo "::endgroup::"
