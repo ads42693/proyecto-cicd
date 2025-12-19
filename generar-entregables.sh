@@ -105,7 +105,7 @@ INSTRUCCIONES DE DESPLIEGUE
    npm install
 
 2. Construir imagen Docker:
-   docker build -t mi-app:latest .
+   docker build -t proyecto-cicd-app:latest .
 
 3. Desplegar con Terraform:
    cd terraform

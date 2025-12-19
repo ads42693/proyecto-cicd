@@ -114,7 +114,7 @@ npm run lint
 ### 4. Construir la Imagen Docker
 
 ```bash
-docker build -t mi-app:latest .
+docker build -t proyecto-cicd-app:latest .
 ```
 
 ### 5. Generar SBOM
@@ -227,8 +227,8 @@ Para detener y eliminar todos los recursos:
 terraform destroy
 
 # O manualmente
-docker stop mi-app prometheus grafana
-docker rm mi-app prometheus grafana
+docker stop proyecto-cicd-app prometheus grafana
+docker rm proyecto-cicd-app prometheus grafana
 docker network rm app-network
 docker volume rm prometheus-data grafana-data
 ```

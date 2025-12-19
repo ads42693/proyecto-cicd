@@ -23,8 +23,8 @@ lint-fix: ## Corregir problemas de linting
 
 build: ## Construir imagen Docker
 	@echo "Construyendo imagen Docker..."
-	docker build -t mi-app:latest .
-	@echo "✓ Imagen construida: mi-app:latest"
+	docker build -t proyecto-cicd-app:latest .
+	@echo "✓ Imagen construida: proyecto-cicd-app:latest"
 
 deploy: ## Desplegar infraestructura con Terraform
 	@echo "Desplegando con Terraform..."
@@ -52,7 +52,7 @@ clean: down ## Limpiar todo (infraestructura + archivos temporales)
 
 logs: ## Ver logs de los contenedores
 	@echo "Logs de la aplicación:"
-	docker logs mi-app --tail=50 -f
+	docker logs proyecto-cicd-app --tail=50 -f
 
 logs-prometheus: ## Ver logs de Prometheus
 	docker logs prometheus --tail=50 -f
@@ -62,7 +62,7 @@ logs-grafana: ## Ver logs de Grafana
 
 status: ## Ver estado de los contenedores
 	@echo "Estado de contenedores:"
-	@docker ps -a --filter "name=mi-app" --filter "name=prometheus" --filter "name=grafana" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+	@docker ps -a --filter "name=proyecto-cicd-app" --filter "name=prometheus" --filter "name=grafana" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 sbom: ## Generar SBOM
 	@echo "Generando SBOM..."
@@ -97,7 +97,7 @@ check: ## Verificar que todo esté instalado correctamente
 
 restart: ## Reiniciar todos los servicios
 	@echo "Reiniciando servicios..."
-	docker restart mi-app prometheus grafana
+	docker restart proyecto-cicd-app prometheus grafana
 	@echo "✓ Servicios reiniciados"
 
 verificar: ## Verificar cumplimiento de rúbrica

@@ -72,8 +72,8 @@ jobs:
       - name: Cleanup Docker resources
         run: |
           echo "Limpiando recursos de Docker..."
-          docker stop mi-app prometheus grafana 2>/dev/null || true
-          docker rm mi-app prometheus grafana 2>/dev/null || true
+          docker stop proyecto-cicd-app prometheus grafana 2>/dev/null || true
+          docker rm proyecto-cicd-app prometheus grafana 2>/dev/null || true
           docker network rm app-network 2>/dev/null || true
           docker volume rm prometheus-data grafana-data 2>/dev/null || true
           docker system prune -f || true

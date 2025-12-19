@@ -1,7 +1,7 @@
 variable "docker_image" {
   description = "Nombre de la imagen Docker a desplegar"
   type        = string
-  default     = "mi-app:latest"
+  default     = "proyecto-cicd-app:latest"
 }
 
 variable "app_port" {

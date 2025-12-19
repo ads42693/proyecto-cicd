@@ -113,7 +113,7 @@ else
 fi
 
 # Verificar imagen construida
-if docker images | grep -q "mi-app"; then
+if docker images | grep -q "proyecto-cicd-app"; then
     print_check 0 "Imagen Docker construida" 4
 else
     print_check 1 "Imagen Docker construida" 0
@@ -213,7 +213,7 @@ echo "Recomendaciones:"
 echo ""
 
 # Recomendaciones específicas
-if ! docker ps | grep -q "mi-app\|prometheus\|grafana"; then
+if ! docker ps | grep -q "proyecto-cicd-app\|prometheus\|grafana"; then
     echo "• Ejecuta 'make up' para levantar los servicios"
 fi
 
