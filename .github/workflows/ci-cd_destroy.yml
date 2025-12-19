@@ -6,21 +6,24 @@ on:
 jobs:
   destroy:
     runs-on: self-hosted
+    permissions:
+      contents: write   # necesario para manejar releases
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download Terraform state
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-state
-          path: terraform/
-        continue-on-error: true
+      - name: Install GitHub CLI
+        run: |
+          curl -fsSL https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz -o gh.tar.gz
+          tar xzf gh.tar.gz
+          echo "${PWD}/gh_2.63.0_linux_amd64/bin" >> $GITHUB_PATH
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.13.4
+      - name: Download Terraform state from Release
+        run: |
+          gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "No previous state found"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Debug Workspace
         run: |
@@ -28,6 +31,11 @@ jobs:
           pwd
           echo "Contents of terraform/:"
           ls -la terraform/
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.13.4
 
       - name: Terraform Init
         working-directory: ./terraform
@@ -46,11 +54,11 @@ jobs:
           docker system prune -f || true
           rm -f terraform/terraform.tfstate || true
           rm -rf terraform/.terraform || true
+          echo "{}" > terraform/terraform.tfstate   # subir un state vacío
           echo "✓ Cleanup completed, state reset"
 
-      - name: Upload Empty Terraform State
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-state
-          path: terraform/
-          retention-days: 30
+      - name: Upload Empty Terraform State to Release
+        run: |
+          gh release upload terraform-state terraform/terraform.tfstate --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
