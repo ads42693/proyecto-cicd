@@ -26,18 +26,20 @@ jobs:
         working-directory: ./terraform
         run: |
           echo "::group::Terraform Destroy"
-          terraform destroy -auto-approve -refresh=true
+          terraform destroy -auto-approve -refresh=true || true
           echo "::endgroup::"
 
-      - name: Cleanup Docker
+      - name: Cleanup Docker and Terraform State
         run: |
-          echo "::group::Cleanup Docker"
+          echo "::group::Cleanup Docker and Terraform State"
           docker stop mi-app prometheus grafana 2>/dev/null || true
           docker rm mi-app prometheus grafana 2>/dev/null || true
           docker network rm app-network 2>/dev/null || true
           docker volume rm prometheus-data grafana-data 2>/dev/null || true
           docker system prune -f || true
-          rm -f terraform/terraform.tfstate terraform/.terraform.lock.hcl || true
+          # Reset Terraform state and lock
           rm -f terraform/terraform.tfstate || true
-          echo "✓ Cleanup completed"
+          rm -f terraform/.terraform.lock.hcl || true
+          rm -rf terraform/.terraform || true
+          echo "✓ Cleanup completed, state reset"
           echo "::endgroup::"
