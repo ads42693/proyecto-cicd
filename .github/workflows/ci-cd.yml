@@ -233,8 +233,9 @@ jobs:
       
       - name: Install GitHub CLI
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gh
+          curl -fsSL https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz -o gh.tar.gz
+          tar xzf gh.tar.gz
+          echo "${PWD}/gh_2.63.0_linux_amd64/bin" >> $GITHUB_PATH
 
       - name: Ensure Release exists
         run: |
