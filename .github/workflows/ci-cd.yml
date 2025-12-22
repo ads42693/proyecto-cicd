@@ -200,26 +200,36 @@ jobs:
           docker rm test-container
           echo "✅ Imagen probada correctamente"
           echo "::endgroup::"
-      
-      - name: Save Docker Image
-        run: |
-          echo "::group::Saving Image"
-          docker save ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }} | gzip > proyecto-cicd-app-${{ github.sha }}.tar.gz
-          ls -lh proyecto-cicd-app-${{ github.sha }}.tar.gz
-          echo "::endgroup::"
-      
-      - name: Upload Image Artifact
-        uses: actions/upload-artifact@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v2
         with:
-          name: docker-image-${{ github.sha }}
-          path: proyecto-cicd-app-${{ github.sha }}.tar.gz
-          retention-days: 7
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Image to GHCR
+        run: |
+          echo "::group::Pushing Docker Image"
+          docker tag ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }} ghcr.io/${{ github.repository_owner }}/proyecto-cicd-app:${{ github.sha }}
+          docker tag ${{ env.DOCKER_IMAGE }}:latest ghcr.io/${{ github.repository_owner }}/proyecto-cicd-app:latest
+          docker push ghcr.io/${{ github.repository_owner }}/proyecto-cicd-app:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/proyecto-cicd-app:latest
+          echo "✅ Imagen Docker publicada en GHCR"
+          echo "::endgroup::"
+
+      - name: Cleanup old Docker images
+        run: |
+          echo "::group::Cleaning up old images"
+          docker image prune -af
+          echo "✅ Imágenes viejas eliminadas"
+          echo "::endgroup::"
 
       - name: Build Summary
         run: |
           echo "### Build Results :package:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Docker image built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Docker image built and pushed to GHCR" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Image tested and verified" >> $GITHUB_STEP_SUMMARY
           echo "- **Image:** ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Size:** $(docker images ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }} --format '{{.Size}}')" >> $GITHUB_STEP_SUMMARY
@@ -297,7 +307,7 @@ jobs:
         run: |
           echo "::group::Terraform Plan"
           terraform plan \
-            -var="docker_image=${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}" \
+            -var="docker_image=ghcr.io/${{ github.repository_owner }}/proyecto-cicd-app:${{ github.sha }}" \
             -out=tfplan
           echo "✅ Plan generado"
           echo "::endgroup::"
