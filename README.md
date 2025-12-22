@@ -5,7 +5,6 @@
 [![Container](https://img.shields.io/badge/Container-Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Security](https://img.shields.io/badge/Security-Snyk-4C4A73?logo=snyk&logoColor=white)](https://snyk.io/)
 [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?logo=prometheus&logoColor=white)](https://prometheus.io/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > Pipeline CI/CD local y reproducible con integración DevSecOps, IaC (Terraform), contenedores, pruebas automatizadas y observabilidad (Prometheus + Grafana). Pensado para ejecutarse con self-hosted runners en WSL2 o en una máquina Linux local.
 
@@ -26,6 +25,7 @@
 - [Desarrollo Local](#️-desarrollo-local)
 - [Testing](#-testing)
 - [Troubleshooting](#-troubleshooting)
+- [Equipo](#-equipo)
 
 ---
 
@@ -974,6 +974,18 @@ docker exec prometheus ping proyecto-cicd-app
 # 4. Revisar targets en Prometheus UI
 # http://localhost:9090/targets
 ```
+
+---
+
+## 👥 Equipo
+
+**Equipo 08**
+
+🔗 **Resultados de GitHub Actions:**  
+👉 https://github.com/ads42693/proyecto-cicd/actions
+
+### Integrante
+- Adrian Arellano Sangama
 
 ---
 
