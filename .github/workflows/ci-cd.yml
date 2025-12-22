@@ -450,12 +450,6 @@ jobs:
           name: sbom-${{ github.sha }}
           path: deliverables
 
-      - name: Download Docker Image Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image-${{ github.sha }}
-          path: deliverables
-
       - name: Collect Deliverables
         run: |
           mkdir -p deliverables
