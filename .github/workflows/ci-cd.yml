@@ -339,7 +339,7 @@ jobs:
       - name: Verify Deployment
         run: |
           echo "::group::Verifying Deployment"
-          sleep 15  # Esperar que los contenedores inicien
+          sleep 30  # Esperar que los contenedores inicien
           
           # Verificar que los contenedores estén corriendo
           echo "Checking containers..."
