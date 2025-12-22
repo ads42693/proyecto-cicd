@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "::group::Snyk Security Scan"
           if ! command -v snyk &> /dev/null; then
-            echo "Installing Snyk CLI..."
+            echo "Instalando Snyk CLI..."
             npm install -g snyk
           fi
           
@@ -244,29 +244,27 @@ jobs:
       - name: Download previous Terraform state
         run: |
           if gh release view terraform-state >/dev/null 2>&1; then
-            echo "✅ Release 'terraform-state' exists, downloading state..."
-            gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "⚠️ No previous state found"
+            echo "✅ La release 'terraform-state' existe, descargando state..."
+            gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "⚠️ No se encontró state previo"
             if [ -f terraform/terraform.tfstate ]; then
-              cp terraform/terraform.tfstate terraform/terraform.tfstate.old
-              echo "✅ Previous state downloaded and backup created"
+              echo "✅ State descargado"
             else
-              echo "⚠️ No state file present after download"
+              echo "⚠️ No hay archivo de state tras la descarga"
             fi
           else
-            echo "⚠️ Release 'terraform-state' does not exist yet, skipping download"
+            echo "⚠️ La release 'terraform-state' aún no existe, se omitirá la descarga"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Debug downloaded state
         run: |
-          echo "Contents of terraform/:"
+          echo "Contenido de terraform/:"
           ls -la terraform/
           if [ -f terraform/terraform.tfstate ]; then
-            echo "✅ terraform.tfstate exists, showing contents:"
-            cat terraform/terraform.tfstate
+            echo "✅ terraform.tfstate presente"
           else
-            echo "⚠️ No state file present"
+            echo "⚠️ No hay archivo de state en terraform/"
           fi
 
       - name: Set up Terraform
@@ -450,7 +448,7 @@ jobs:
 
       - name: Collect Deliverables
         run: |
-          mkdir deliverables
+          mkdir -p deliverables
           cp .github/workflows/*.yml deliverables/ || true
           cp terraform/*.tf deliverables/
           cp Dockerfile deliverables/
@@ -465,5 +463,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: deliverables-${{ github.sha }}
-          path: deliverables-${{ github.sha }}.tar.gz
+          path: deliverables-${{ github.sha }}.zip
           retention-days: 30
