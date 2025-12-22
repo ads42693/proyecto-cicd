@@ -2,10 +2,8 @@ name: CI/CD Pipeline Local
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Permite ejecutar manualmente
+    branches: [ main]
+  workflow_dispatch:
 
 env:
   DOCKER_IMAGE: proyecto-cicd-app
@@ -437,6 +435,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      
+      - name: Download SBOM Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: deliverables
+
+      - name: Download Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-${{ github.sha }}
+          path: deliverables
 
       - name: Collect Deliverables
         run: |
@@ -444,14 +454,12 @@ jobs:
           cp .github/workflows/*.yml deliverables/ || true
           cp terraform/*.tf deliverables/
           cp Dockerfile deliverables/
-          cp proyecto-cicd-app-${{ github.sha }}.tar.gz deliverables/ || true
-          cp sbom.json deliverables/ || true
           ls -lh deliverables
 
       - name: Create Archive
         run: |
-          tar -czf deliverables-${{ github.sha }}.tar.gz deliverables
-          ls -lh deliverables-${{ github.sha }}.tar.gz
+          zip -r deliverables-${{ github.sha }}.zip deliverables
+          ls -lh deliverables-${{ github.sha }}.zip
 
       - name: Upload Deliverables Artifact
         uses: actions/upload-artifact@v4

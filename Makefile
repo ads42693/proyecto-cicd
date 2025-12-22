@@ -1,8 +1,13 @@
-.PHONY: help install test lint build deploy up down clean logs sbom entregables
+.PHONY: help install test lint lint-fix build deploy up down clean logs logs-prometheus logs-grafana status sbom entregables dev check restart evidencias demo
+
+# Variables
+IMAGE ?= proyecto-cicd-app
+TAG ?= latest
 
 help: ## Mostrar esta ayuda
 	@echo "Comandos disponibles:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 install: ## Instalar dependencias
 	@echo "Instalando dependencias..."
@@ -21,14 +26,18 @@ lint-fix: ## Corregir problemas de linting
 	@echo "Corrigiendo problemas de linting..."
 	npm run lint:fix
 
-build: ## Construir imagen Docker
+build: ## Construir imagen Docker (local)
 	@echo "Construyendo imagen Docker..."
-	docker build -t proyecto-cicd-app:latest .
-	@echo "✓ Imagen construida: proyecto-cicd-app:latest"
+	docker build -t $(IMAGE):$(TAG) -t $(IMAGE):latest .
+	@echo "✓ Imagen construida: $(IMAGE):$(TAG)"
 
-deploy: ## Desplegar infraestructura con Terraform
+deploy: ## Desplegar infraestructura con Terraform (usando state remoto en Release)
 	@echo "Desplegando con Terraform..."
-	cd terraform && terraform init && terraform apply -auto-approve
+	@if gh release view terraform-state >/dev/null 2>&1; then \
+		echo "✅ Descargando state remoto..."; \
+		gh release download terraform-state --pattern "terraform.tfstate" --dir terraform/ || echo "⚠️ No se encontró state previo"; \
+    fi
+	cd terraform && terraform init -upgrade && terraform apply -auto-approve
 	@echo "✓ Infraestructura desplegada"
 
 up: build deploy ## Construir y desplegar todo
@@ -39,7 +48,7 @@ up: build deploy ## Construir y desplegar todo
 	@echo "  - Prometheus: http://localhost:9090"
 	@echo "  - Grafana:    http://localhost:3001 (admin/admin)"
 
-down: ## Destruir infraestructura
+down: ## Destruir infraestructura (usando state remoto en Release)
 	@echo "Destruyendo infraestructura..."
 	cd terraform && terraform destroy -auto-approve
 	@echo "✓ Infraestructura destruida"
@@ -50,9 +59,9 @@ clean: down ## Limpiar todo (infraestructura + archivos temporales)
 	rm -rf terraform/.terraform terraform/terraform.tfstate*
 	@echo "✓ Limpieza completada"
 
-logs: ## Ver logs de los contenedores
+logs: ## Ver logs de la aplicación
 	@echo "Logs de la aplicación:"
-	docker logs proyecto-cicd-app --tail=50 -f
+	docker logs $(IMAGE) --tail=50 -f || echo "⚠️ Contenedor $(IMAGE) no encontrado"
 
 logs-prometheus: ## Ver logs de Prometheus
 	docker logs prometheus --tail=50 -f
@@ -62,9 +71,9 @@ logs-grafana: ## Ver logs de Grafana
 
 status: ## Ver estado de los contenedores
 	@echo "Estado de contenedores:"
-	@docker ps -a --filter "name=proyecto-cicd-app" --filter "name=prometheus" --filter "name=grafana" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+	@docker ps -a --filter "name=$(IMAGE)" --filter "name=prometheus" --filter "name=grafana" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-sbom: ## Generar SBOM
+sbom: ## Generar SBOM (CycloneDX)
 	@echo "Generando SBOM..."
 	@if ! command -v cyclonedx-npm &> /dev/null; then \
 		echo "Instalando CycloneDX CLI..."; \
@@ -75,9 +84,14 @@ sbom: ## Generar SBOM
 
 entregables: ## Generar archivo comprimido para entregar
 	@echo "Generando entregables..."
-	@read -p "Nombre del equipo: " equipo; \
-	chmod +x generar-entregables.sh; \
-	./generar-entregables.sh $$equipo
+	@mkdir -p deliverables
+	@cp .github/workflows/*.yml deliverables/ || true
+	@cp terraform/*.tf deliverables/
+	@cp Dockerfile deliverables/
+	@[ -f sbom.json ] && cp sbom.json deliverables/ || echo "⚠️ sbom.json no encontrado (ejecuta 'make sbom')"
+	@[ -f $(IMAGE)-*.tar.gz ] && cp $(IMAGE)-*.tar.gz deliverables/ || echo "⚠️ imagen exportada .tar.gz no encontrada"
+	@tar -czf deliverables.tar.gz deliverables
+	@echo "✓ Entregables empaquetados: deliverables.tar.gz"
 
 dev: ## Ejecutar en modo desarrollo
 	npm run dev
@@ -97,37 +111,12 @@ check: ## Verificar que todo esté instalado correctamente
 
 restart: ## Reiniciar todos los servicios
 	@echo "Reiniciando servicios..."
-	docker restart proyecto-cicd-app prometheus grafana
+	docker restart $(IMAGE) prometheus grafana || true
 	@echo "✓ Servicios reiniciados"
-
-verificar: ## Verificar cumplimiento de rúbrica
-	@chmod +x verificar-rubrica.sh
-	@./verificar-rubrica.sh
-
-setup-runner: ## Configurar GitHub Actions runner
-	@chmod +x setup-github-runner.sh
-	@./setup-github-runner.sh
-
-runner-start: ## Iniciar GitHub Actions runner
-	@echo "Iniciando GitHub Actions runner..."
-	@cd ~/actions-runner && sudo ./svc.sh start
-	@echo "✓ Runner iniciado"
-
-runner-stop: ## Detener GitHub Actions runner
-	@echo "Deteniendo GitHub Actions runner..."
-	@cd ~/actions-runner && sudo ./svc.sh stop
-	@echo "✓ Runner detenido"
-
-runner-status: ## Ver estado del runner
-	@cd ~/actions-runner && sudo ./svc.sh status
-
-runner-logs: ## Ver logs del runner
-	@tail -n 50 ~/actions-runner/_diag/*.log
 
 evidencias: ## Crear carpeta para evidencias
 	@mkdir -p docs/evidencias
 	@echo "✓ Carpeta docs/evidencias creada"
-	@echo "Guarda aquí tus capturas de pantalla"
 
 demo: up ## Demostración completa del proyecto
 	@echo ""
@@ -152,58 +141,3 @@ demo: up ## Demostración completa del proyecto
 	@echo "======================================"
 	@echo "✓ Demo completada"
 	@echo "======================================"
-
-fix-workflow: ## Arreglar workflow bloqueado
-	@echo "Aplicando fix para Snyk timeout..."
-	@echo ""
-	@echo "Pasos:"
-	@echo "1. Cancela el workflow actual en GitHub (si está corriendo)"
-	@echo "2. El workflow se ha actualizado con:"
-	@echo "   - Timeout de 3 minutos en security scan"
-	@echo "   - npm audit como alternativa a Snyk"
-	@echo "   - Snyk opcional (solo si tienes token)"
-	@echo ""
-	@read -p "¿Workflow cancelado en GitHub? (y/n) " ans; \
-	if [ "$ans" = "y" ]; then \
-		git add .github/workflows/ci-cd.yml; \
-		git commit -m "fix: Add timeout to security scans and use npm audit"; \
-		git push; \
-		echo ""; \
-		echo "✓ Fix aplicado. Revisa GitHub Actions."; \
-	else \
-		echo "Cancela primero el workflow en GitHub y ejecuta este comando de nuevo"; \
-	fi
-
-cancel-runner-jobs: ## Matar procesos bloqueados del runner
-	@echo "Matando procesos de npm/snyk bloqueados..."
-	@pkill -9 snyk 2>/dev/null || echo "No hay procesos snyk"
-	@pkill -9 npm 2>/dev/null || echo "No hay procesos npm bloqueados"
-	@cd ~/actions-runner && sudo ./svc.sh restart
-	@echo "✓ Runner reiniciado"
-
-setup-snyk: ## Configurar Snyk localmente
-	@chmod +x setup-snyk-local.sh
-	@./setup-snyk-local.sh
-
-test-snyk: ## Probar Snyk localmente
-	@echo "Probando Snyk..."
-	@if command -v snyk &> /dev/null; then \
-		snyk test --severity-threshold=high || echo "Scan completed"; \
-	else \
-		echo "❌ Snyk no instalado. Ejecuta: make setup-snyk"; \
-	fi
-
-verify-snyk: ## Verificar autenticación de Snyk
-	@echo "Verificando Snyk..."
-	@if command -v snyk &> /dev/null; then \
-		if snyk config get api 2>/dev/null | grep -q "api:"; then \
-			echo "✓ Snyk está autenticado"; \
-			snyk config get api; \
-		else \
-			echo "❌ Snyk NO está autenticado"; \
-			echo "Ejecuta: snyk auth"; \
-		fi; \
-	else \
-		echo "❌ Snyk no está instalado"; \
-		echo "Ejecuta: make setup-snyk"; \
-	fi
