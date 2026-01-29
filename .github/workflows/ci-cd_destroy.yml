@@ -61,30 +61,43 @@ jobs:
           echo "Ejecutando terraform init..."
           terraform init -upgrade
           echo "✅ Terraform init completado"
+      
+      - name: Pre-Cleanup Docker Containers
+        run: |
+          echo "🧹 [Fase 1] Eliminando contenedores para liberar bloqueos..."
+          docker stop proyecto-cicd-app prometheus grafana 2>/dev/null || true
+          docker rm -f proyecto-cicd-app prometheus grafana 2>/dev/null || true
+          echo "✅ Contenedores eliminados (si existían)."
 
       - name: Terraform Destroy
         working-directory: ./terraform
         run: |
-          echo "Ejecutando terraform destroy..."
+          echo "💣 [Fase 2] Destruyendo infraestructura restante con Terraform..."
           terraform destroy -auto-approve -refresh=true || true
-          echo "✅ Terraform destroy completado"
+          echo "✅ Terraform destroy completado (o ignorado si falló)."
 
-      - name: Cleanup Docker resources
+      - name: Final Cleanup (Networks & Volumes)
         run: |
-          echo "Limpiando recursos de Docker..."
-          docker stop proyecto-cicd-app prometheus grafana 2>/dev/null || true
-          docker rm proyecto-cicd-app prometheus grafana 2>/dev/null || true
+          echo "✨ [Fase 3] Barrido final de recursos huérfanos..."
           docker network rm app-network 2>/dev/null || true
           docker volume rm prometheus-data grafana-data 2>/dev/null || true
+          
+          # Borrar imágenes que quedaron sin uso
           docker system prune -f || true
+          
+          # Limpiar archivos locales
           rm -f terraform/terraform.tfstate || true
           rm -rf terraform/.terraform || true
-          echo "✅ Limpieza de Docker completada"
+          echo "✅ Limpieza de Docker y archivos completada"
 
       - name: Delete Terraform Release
         run: |
-          echo "Eliminando la Release completa 'terraform-state'..."
-          gh release delete terraform-state --yes || echo "⚠️ No existe la Release para eliminar"
-          echo "✅ Release eliminada"
+          echo "🗑️ Eliminando la Release 'terraform-state'..."
+          # Agregamos --cleanup-tag para asegurar que no queden tags zombies
+          gh release delete terraform-state --yes --cleanup-tag || echo "⚠️ No existe la Release o ya fue eliminada"
+          
+          # Doble seguridad para borrar el tag si el flag anterior falla en versiones viejas de CLI
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/terraform-state" 2>/dev/null || true
+          echo "✅ Release y Tag eliminados correctamente"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
