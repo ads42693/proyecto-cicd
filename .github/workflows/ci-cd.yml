@@ -388,18 +388,31 @@ jobs:
         continue-on-error: true
 
       - name: Create/Update Terraform Release
-        run: |
-          if gh release view terraform-state >/dev/null 2>&1; then
-            echo "✅ Release 'terraform-state' existe, actualizando asset..."
-            gh release upload terraform-state terraform/terraform.tfstate --clobber
-          else
-            echo "⚠️ Release 'terraform-state' no existe, creando..."
-            gh release create terraform-state terraform/terraform.tfstate \
-              --title "Terraform State" \
-              --notes "Release para almacenar el tfstate"
-          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔄 Gestionando Release de Terraform..."
+
+          # 1. Intentamos subir primero (Camino feliz: El release ya existe)
+          if gh release upload terraform-state terraform/terraform.tfstate --clobber; then
+            echo "✅ Release existe. Asset 'terraform.tfstate' actualizado correctamente."
+            exit 0
+          fi
+
+          echo "⚠️ El upload falló (El release no existe). Procediendo a crear..."
+
+          # 2. Limpieza de Tag Zombie
+          # Intentamos borrar el tag remoto 'terraform-state' para evitar el error "tag already exists".
+          # Usamos la API directa para no depender del estado de git local.
+          echo "🧹 Asegurando que el tag esté libre..."
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/terraform-state" >/dev/null 2>&1 || echo "ℹ️ El tag no existía o ya estaba limpio."
+
+          # 3. Crear el Release desde cero
+          echo "🆕 Creando nuevo release 'terraform-state'..."
+          gh release create terraform-state terraform/terraform.tfstate \
+            --title "Terraform State" \
+            --notes "Release persistente para el estado de Terraform" \
+            --target ${{ github.sha }}
 
       - name: Deployment Summary
         run: |
